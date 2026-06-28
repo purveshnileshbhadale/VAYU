@@ -1739,15 +1739,15 @@
             <div class="download-card fade-in fade-in-d2">
                 <div class="download-os-icon">🍎</div>
                 <h3>macOS</h3>
-                <p class="os-desc">Source code — double-click <code>VAYU.command</code> to run</p>
-                <a href="downloads/VAYU.dmg" class="download-btn mac">
+                <p class="os-desc">Portable ZIP — double-click <code>start_vayu.command</code> to run</p>
+                <a href="downloads/VAYU_mac.zip" class="download-btn mac">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    Download Source Code
-                    <span class="size-badge">~2 MB</span>
+                    Download for macOS
+                    <span class="size-badge">~15 MB</span>
                 </a>
                 <div class="download-deps">
                     <h4>Dependencies</h4>
@@ -1820,36 +1820,18 @@
                         <div class="step">
                             <div class="step-num">1</div>
                             <div class="step-content">
-                                <strong>Download &amp; Extract Source</strong>
-                                <p>Click <strong>"Download Source Code"</strong> above to get the source ZIP. Extract it to a folder.</p>
+                                <strong>Download &amp; Extract</strong>
+                                <p>Click <strong>"Download for macOS"</strong> above to get the ZIP. Extract it anywhere on your Mac.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-num">2</div>
                             <div class="step-content">
-                                <strong>Install Python 3.10+</strong>
-                                <p>Via <strong>Homebrew</strong>: <code style="color:var(--accent-light);">brew install python@3.14</code> &nbsp;or&nbsp; <a href="https://python.org" target="_blank" style="color:var(--accent-light);">python.org</a></p>
+                                <strong>Run VAYU</strong>
+                                <p>Double-click <code style="color:var(--accent-light);">start_vayu.command</code> — it auto-installs Python dependencies and launches VAYU. On first run, you'll be prompted to enter your API keys.</p>
+                                <p style="font-size:0.85rem;margin-top:0.3rem;">If you get a security warning, right-click the file and select <strong>Open</strong>.</p>
                             </div>
                         </div>
-                        <div class="step">
-                            <div class="step-num">3</div>
-                            <div class="step-content">
-                                <strong>Install PortAudio</strong>
-                                <p>Required for mic: <code style="color:var(--accent-light);">brew install portaudio</code></p>
-                            </div>
-                        </div>
-                        <div class="step">
-                            <div class="step-num">4</div>
-                            <div class="step-content">
-                                <strong>Install Dependencies</strong>
-                                <p>Open <strong>Terminal</strong>, <code>cd</code> to the extracted folder, then run:</p>
-                                <div class="terminal-box" style="margin-top:0.5rem;">
-                                    <div class="terminal-header">
-                                        <span class="terminal-dot" style="background:#ff5f57;"></span>
-                                        <span class="terminal-dot" style="background:#febc2e;"></span>
-                                        <span class="terminal-dot" style="background:#28c840;"></span>
-                                        <span class="terminal-title">Terminal</span>
-                                    </div>
                                     <div class="terminal-body">
                                         <span class="terminal-prompt">$</span> pip install -r requirements.txt
                                     </div>
