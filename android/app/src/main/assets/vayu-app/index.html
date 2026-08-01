@@ -919,7 +919,9 @@ function buildSystemPrompt(){
     +'with Maps, volume, brightness, auto-rotate, Do Not Disturb, flashlight, WiFi, Bluetooth, '
     +'media playback, share text, clipboard, battery checks.\n'
     +'- ALWAYS call the appropriate tool when the user asks for one of these — never just say '
-    +'you did it. After the tool runs, report the result in ONE short sentence, in character.\n'
+    +'you did it. After the tool runs, reply with a real confirmation sentence in character, '
+    +'e.g. "Opening YouTube now, sir." or "WhatsApp is up, sir." NEVER reply with only "Done", '
+    +'"OK" or a single word — always a full short sentence telling the user what you did.\n'
     +'- If a tool fails or needs permission, tell the user briefly what to grant.\n'
     +'- Use open_app whenever the user asks to open/launch any app — resolve the name yourself '
     +'(e.g. "open Instagram" → open_app with app_name "instagram").\n'
@@ -975,6 +977,7 @@ async function groqChat(messages, image){
         const data=await res.json();
         const msg=data.choices&&data.choices[0]&&data.choices[0].message;
         if(!msg){ lastErr='Empty response on '+model; break; }
+        let lastToolPretty='';
         if(msg.tool_calls&&msg.tool_calls.length){
           msgs.push({role:'assistant',content:null,tool_calls:msg.tool_calls});
           for(const tc of msg.tool_calls){
@@ -989,6 +992,10 @@ async function groqChat(messages, image){
             }
             let pretty=result;
             try{ const j=JSON.parse(result); pretty=(j.ok!==false?'✓':'✗')+' '+(j.result||j.error||'done'); }catch(e){}
+            if(fn.name==='open_app'&&result.indexOf('Opened')===0){
+              pretty='Opened '+args.app_name;
+            }
+            lastToolPretty=pretty;
             writeLog('sys','TOOL: '+fn.name+' → '+pretty.slice(0,80));
             console.log('[TOOL]',fn.name,args,'=>',result);
             msgs.push({role:'tool',tool_call_id:tc.id,name:fn.name,content:result});
@@ -996,6 +1003,7 @@ async function groqChat(messages, image){
           continue;
         }
         text=msg.content||'';
+        if(!text&&lastToolPretty) text='Done. '+lastToolPretty;
         finished=true;
         break;
       }
