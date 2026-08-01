@@ -1297,7 +1297,15 @@ class VayuLive:
                     
             except Exception as e:
                 print(f"[VAYU] ⚠️ {e}")
-                traceback.print_exc()
+                msg = str(e)
+                if "invalid authentication" in msg or "UNAUTHENTICATED" in msg:
+                    print("[VAYU] ❌ GEMINI API KEY REJECTED — your saved Gemini key is invalid or expired.")
+                    print("[VAYU]    Fix: Settings (◈) → paste a fresh key from https://aistudio.google.com/apikey → SAVE, then restart VAYU.")
+                    self.ui.set_state("ERROR")
+                    self.web.set_state("ERROR")
+                    await asyncio.sleep(30)
+                else:
+                    traceback.print_exc()
 
             self.set_speaking(False)
             self.ui.set_state("THINKING")
