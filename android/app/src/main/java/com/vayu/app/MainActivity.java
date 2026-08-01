@@ -183,6 +183,39 @@ public class MainActivity extends AppCompatActivity {
         return m;
     }
 
+    private static final java.util.Map<String, String[]> KNOWN_ACTIVITIES = buildKnownActivities();
+    private static java.util.Map<String, String[]> buildKnownActivities() {
+        java.util.Map<String, String[]> m = new java.util.HashMap<>();
+        m.put("com.whatsapp", new String[]{"com.whatsapp.HomeActivity"});
+        m.put("com.whatsapp.w4b", new String[]{"com.whatsapp.HomeActivity"});
+        m.put("com.instagram.android", new String[]{"com.instagram.android.activity.MainTabActivity"});
+        m.put("com.google.android.youtube", new String[]{"com.google.android.apps.youtube.app.honeycomb.Shell$HomeActivity"});
+        m.put("com.spotify.music", new String[]{"com.spotify.music.MainActivity"});
+        m.put("com.android.chrome", new String[]{"com.google.android.apps.chrome.Main"});
+        m.put("com.google.android.gm", new String[]{"com.google.android.gm.ConversationListActivity"});
+        m.put("com.google.android.apps.maps", new String[]{"com.google.android.apps.maps.MapsActivity"});
+        m.put("org.telegram.messenger", new String[]{"org.telegram.ui.LaunchActivity"});
+        m.put("com.twitter.android", new String[]{"com.twitter.app.main.MainActivity"});
+        m.put("com.facebook.katana", new String[]{"com.facebook.katana.LoginActivity"});
+        m.put("com.snapchat.android", new String[]{"com.snapchat.android.LandingPageActivity"});
+        m.put("com.linkedin.android", new String[]{"com.linkedin.android.authenticator.LaunchActivity"});
+        m.put("com.netflix.mediaclient", new String[]{"com.netflix.mediaclient.ui.launch.UIWebViewActivity"});
+        m.put("com.android.vending", new String[]{"com.google.android.finsky.activities.LaunchUrlHandlerActivity"});
+        m.put("com.android.settings", new String[]{"com.android.settings.Settings"});
+        m.put("com.google.android.dialer", new String[]{"com.google.android.dialer.extensions.GoogleDialtactsActivity"});
+        m.put("com.android.dialer", new String[]{"com.android.dialer.DialtactsActivity"});
+        m.put("com.google.android.apps.messaging", new String[]{"com.google.android.apps.messaging.ui.ConversationListActivity"});
+        m.put("com.google.android.apps.photos", new String[]{"com.google.android.apps.photos.home.HomeActivity"});
+        m.put("com.google.android.apps.youtube.music", new String[]{"com.google.android.apps.youtube.music.activities.MusicActivity"});
+        m.put("com.flipkart.android", new String[]{"com.flipkart.android.activity.HomeFragmentHolderActivity"});
+        m.put("com.amazon.mShop.android.shopping", new String[]{"com.amazon.mShop.android.home.HomeActivity"});
+        m.put("com.amazon.avod.thirdpartyclient", new String[]{"com.amazon.avod.thirdpartyclient.MainActivity"});
+        m.put("com.phonepe.app", new String[]{"com.phonepe.app.core.ui.activity.LauncherActivity"});
+        m.put("com.paytm", new String[]{"com.paytm.AndroidLauncher"});
+        m.put("com.google.android.apps.maps", new String[]{"com.google.android.apps.maps.MapsActivity"});
+        return m;
+    }
+
     private WebView webView;
     private AndroidBridge bridge;
     private SpeechRecognizer speechRecognizer;
@@ -429,11 +462,7 @@ public class MainActivity extends AppCompatActivity {
                             ? "App '" + app + "' not found. Use list_apps to see installed apps."
                             : "App '" + app + "' not found. Did you mean '" + suggestion + "'?";
                 }
-                Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
-                if (i == null) return "App found but cannot be launched: " + pkg;
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(i);
-                return "Opened " + app;
+                return launchApp(app, pkg);
             }
             case "list_apps": {
                 Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
@@ -795,7 +824,11 @@ public class MainActivity extends AppCompatActivity {
             int curVer = appVersionCode();
             if (curVer <= lastVer) return;
             prefs.edit().putInt("last_version", curVer).apply();
-            if (curVer >= 4) {
+            if (curVer >= 5) {
+                notify("VAYU 1.3.1 — app opening fixed",
+                        "Opening apps, listing apps and search suggestions now work on Android 11+ (package visibility fix).",
+                        3001);
+            } else if (curVer >= 4) {
                 notify("VAYU 1.3.0 — Jarvis Edition installed",
                         "Jarvis-style voice, Bixby-like app opening on any Android device, auto-rotate, Do Not Disturb and cross-device control. Open VAYU to see what's new.",
                         3001);
@@ -977,6 +1010,43 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception ignored) {}
             return null;
         }
+    }
+
+    private String launchApp(String app, String pkg) {
+        try {
+            Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+            if (i != null) {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
+                return "Opened " + app;
+            }
+        } catch (Exception ignored) {}
+
+        java.util.List<String> candidates = new ArrayList<>();
+        String[] known = KNOWN_ACTIVITIES.get(pkg);
+        if (known != null) {
+            for (String a : known) {
+                if (a.startsWith(pkg + ".") || a.startsWith(pkg + "/")) candidates.add(a);
+                else candidates.add(pkg + "/" + a);
+            }
+        }
+        String[] suffixes = {".HomeActivity", ".MainActivity", ".SplashActivity",
+                ".LauncherActivity", ".activities.MainActivity", ".ui.MainActivity"};
+        for (String s : suffixes) {
+            String a = pkg + "/" + pkg + s;
+            if (!candidates.contains(a)) candidates.add(a);
+        }
+        for (String comp : candidates) {
+            try {
+                Intent ci = new Intent(Intent.ACTION_MAIN);
+                ci.setComponent(android.content.ComponentName.unflattenFromString(comp));
+                ci.addCategory(Intent.CATEGORY_LAUNCHER);
+                ci.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(ci);
+                return "Opened " + app;
+            } catch (Exception ignored) {}
+        }
+        return "App '" + app + "' cannot be launched on this device: " + pkg;
     }
 
     private String findAppPackage(String name) {        String lower = name.toLowerCase(Locale.ROOT).trim();

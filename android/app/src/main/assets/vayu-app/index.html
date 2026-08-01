@@ -339,7 +339,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div style="height:8px"></div>
     <button class="btn danger full" onclick="resetApp()">⚠ FACTORY RESET</button>
     <div style="height:14px"></div>
-    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.3.0 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
+    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.3.1 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
   </div>
 </div>
 
@@ -349,9 +349,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="overlay upd-overlay" id="ov-update">
   <div class="upd-box">
     <span class="upd-tag">NEW UPDATE</span>
-    <h2>VAYU <span class="upd-ver">1.3.0</span> — Jarvis Edition</h2>
+    <h2>VAYU <span class="upd-ver">1.3.1</span> — Jarvis Edition</h2>
     <div class="upd-sub">What's new, sir:</div>
     <ul class="upd-list">
+      <li><b>App opening FIXED</b> — open apps, list apps and search suggestions now work on Android 11+.</li>
       <li><b>Jarvis-style personality</b> — polite, witty and precise, like the real J.A.R.V.I.S.</li>
       <li><b>Open apps like Bixby</b> — on any Android phone, tablet or Chromebook (70+ apps, plus any installed app by name).</li>
       <li><b>New controls</b> — auto-rotate and Do Not Disturb, smarter flashlight handling.</li>
@@ -1368,11 +1369,11 @@ function renderSettings(){
   if(pli) pli.innerHTML=phoneLinkOn?'<b style="color:var(--green)">ON</b> — laptop can control this phone.<br>Address: <b style="color:var(--pri)">'+(desktopHost?'':'')+'</b>'+(phoneLinkInfoAddr||'')+'<br><span style="font-size:9px">Use it in VAYU Desktop → Settings → Phone IP. PIN: '+desktopPin+'</span>'
     :'<b style="color:var(--red)">OFF</b> — phone is not controllable remotely.';
   const si=document.getElementById('sysInfo');
-  si.innerHTML='<b>VAYU v1.3.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
+  si.innerHTML='<b>VAYU v1.3.1</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
   if(NATIVE){ try{ NATIVE.getSysInfo(); }catch(e){} }
   else{
     const mem=loadMemory();
-    si.innerHTML='<b>VAYU v1.3.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
+    si.innerHTML='<b>VAYU v1.3.1</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
   }
 }
 let phoneLinkInfoAddr='';
@@ -1491,17 +1492,17 @@ function initVayu(){
   document.getElementById('splash').className='splash hidden';
   document.getElementById('apiSetup').className='api-setup';
   document.getElementById('app').className='show';
-  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.3.0');
+  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.3.1');
   writeLog('sys','Mode: '+currentMode.toUpperCase()+'. Model: '+modelChoice);
   if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(loadPref('rate',0.85))); NATIVE.setWakeWord(wakeOn); NATIVE.getSysInfo(); }catch(e){} }
   maybeShowUpdate();
 }
 function maybeShowUpdate(){
-  try{ if(localStorage.getItem('vayu_seen_update')==='1.3.0') return; }catch(e){}
+  try{ if(localStorage.getItem('vayu_seen_update')==='1.3.1') return; }catch(e){}
   setTimeout(()=>{ document.getElementById('ov-update').className='overlay upd-overlay show'; },1500);
 }
 function dismissUpdate(){
-  try{ localStorage.setItem('vayu_seen_update','1.3.0'); }catch(e){}
+  try{ localStorage.setItem('vayu_seen_update','1.3.1'); }catch(e){}
   document.getElementById('ov-update').className='overlay upd-overlay';
 }
 function saveConv(){
