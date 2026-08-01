@@ -115,6 +115,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* ---------- overlays ---------- */
 .overlay{position:fixed;inset:0;background:rgba(0,4,8,0.96);display:none;flex-direction:column;z-index:500;padding:14px}
 .overlay.show{display:flex}
+.upd-overlay{display:none;align-items:center;justify-content:center;z-index:900;padding:18px}
+.upd-overlay.show{display:flex}
+.upd-box{width:100%;max-width:400px;background:linear-gradient(160deg,#01141f,#010b12);border:1px solid var(--border-b);border-radius:16px;padding:22px 20px;box-shadow:0 0 40px rgba(0,212,255,0.15);max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.upd-tag{display:inline-block;font-size:9px;letter-spacing:2px;font-weight:700;color:#000;background:linear-gradient(90deg,#00d4ff,#a78bfa);padding:3px 8px;border-radius:4px;font-family:Consolas,monospace}
+.upd-box h2{color:var(--white);font-size:1.15rem;margin:10px 0 2px;letter-spacing:0.5px}
+.upd-ver{color:var(--pri)}
+.upd-sub{color:var(--text-dim);font-size:0.75rem;margin-bottom:8px}
+.upd-list{list-style:none;margin:10px 0 16px}
+.upd-list li{color:var(--text);font-size:0.8rem;line-height:1.55;padding:5px 0 5px 18px;position:relative;border-bottom:1px dashed rgba(0,212,255,0.08)}
+.upd-list li:last-child{border-bottom:none}
+.upd-list li::before{content:'\25C6';position:absolute;left:0;top:7px;color:var(--pri);font-size:8px}
+.upd-list b{color:var(--pri)}
+.upd-btn{width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#00d4ff,#0090cc);color:#fff;font-weight:700;letter-spacing:1px;cursor:pointer;font-size:13px;font-family:Consolas,monospace}
+.upd-btn:active{transform:scale(0.97)}
 .ov-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0}
 .ov-head h2{font-size:15px;font-weight:800;letter-spacing:1px;color:var(--pri);font-family:Consolas,monospace}
 .ov-head .x{margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px}
@@ -312,17 +326,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="sec-title">SYSTEM</div>
     <div class="set-note" id="sysInfo" style="margin:0;font-family:Consolas,monospace;line-height:1.7"></div>
 
+    <div class="sec-title">REMOTE LINK</div>
+    <div class="set-row"><label>Desktop</label><input type="text" id="setDesktop" placeholder="192.168.1.5:5050"></div>
+    <div class="set-note">Your laptop's VAYU Remote address (shown on the PC: "Remote Link"). Leave empty to disable.</div>
+    <div class="set-row"><label>Desktop PIN</label><input type="password" id="setDesktopPin" placeholder="8421"></div>
+    <div class="set-note">PIN shown on the PC's VAYU Remote page.</div>
+    <div class="set-row"><label>Phone link</label><div class="toggle" id="setPhoneLink" onclick="togglePref('phonelink')"></div></div>
+    <div class="set-note" id="phoneLinkInfo" style="margin-left:0">Enable to let your laptop control this phone.</div>
+
     <div style="height:14px"></div>
     <button class="btn full" onclick="saveSettings()">💾 SAVE SETTINGS</button>
     <div style="height:8px"></div>
     <button class="btn danger full" onclick="resetApp()">⚠ FACTORY RESET</button>
     <div style="height:14px"></div>
-    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.2.0 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
+    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.3.0 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 <input type="file" id="filePick" accept="image/*" style="display:none">
+
+<div class="overlay upd-overlay" id="ov-update">
+  <div class="upd-box">
+    <span class="upd-tag">NEW UPDATE</span>
+    <h2>VAYU <span class="upd-ver">1.3.0</span> — Jarvis Edition</h2>
+    <div class="upd-sub">What's new, sir:</div>
+    <ul class="upd-list">
+      <li><b>Jarvis-style personality</b> — polite, witty and precise, like the real J.A.R.V.I.S.</li>
+      <li><b>Open apps like Bixby</b> — on any Android phone, tablet or Chromebook (70+ apps, plus any installed app by name).</li>
+      <li><b>New controls</b> — auto-rotate and Do Not Disturb, smarter flashlight handling.</li>
+      <li><b>Control your laptop from your phone</b> — VAYU can see your PC's screen, type, click, adjust volume and open apps over WiFi (or the internet).</li>
+      <li><b>Control your phone from your laptop</b> — the phone now runs its own secure remote link.</li>
+      <li><b>iPhone &amp; iPad</b> — full VAYU installs as an app on iOS via Safari.</li>
+    </ul>
+    <button class="upd-btn" onclick="dismissUpdate()">GOT IT, SIR</button>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -372,6 +411,16 @@ const TOOLS = [
   {type:'function',function:{name:'list_apps',description:'Lists installed apps on the phone (name|package). Useful before opening an app when unsure of the name.',parameters:{type:'object',properties:{}}}},
   {type:'function',function:{name:'device_info',description:'Gets device info: model, Android version, storage, RAM.',parameters:{type:'object',properties:{}}}},
   {type:'function',function:{name:'open_settings',description:'Opens a system settings page: wifi, bluetooth, battery, display, sound, storage, apps, location, about.',parameters:{type:'object',properties:{page:{type:'string'}},required:['page']}}},
+  {type:'function',function:{name:'desktop_status',description:'Gets the status of the user\'s linked laptop: state, screen, IP, tunnel URL. Use this first before other desktop actions.',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'desktop_screenshot',description:'Captures a screenshot of the linked laptop screen so you can see what is happening on it.',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'desktop_mouse',description:'Moves the laptop mouse cursor by a relative offset.',parameters:{type:'object',properties:{dx:{type:'integer',description:'Horizontal delta in pixels'},dy:{type:'integer',description:'Vertical delta in pixels'}},required:['dx','dy']}}},
+  {type:'function',function:{name:'desktop_click',description:'Clicks the laptop mouse (left/right, single/double).',parameters:{type:'object',properties:{button:{type:'string',description:'left|right'},clicks:{type:'integer',description:'1 or 2'}}}}},
+  {type:'function',function:{name:'desktop_type',description:'Types text on the laptop keyboard.',parameters:{type:'object',properties:{text:{type:'string'}},required:['text']}}},
+  {type:'function',function:{name:'desktop_volume',description:'Sets the laptop system volume 0-100.',parameters:{type:'object',properties:{level:{type:'integer',description:'0-100'}},required:['level']}}},
+  {type:'function',function:{name:'desktop_apps',description:'Lists apps/windows currently open on the laptop.',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'desktop_focus',description:'Brings a laptop window to the front by title.',parameters:{type:'object',properties:{title:{type:'string'}},required:['title']}}},
+  {type:'function',function:{name:'desktop_files',description:'Lists files/folders in a directory on the laptop.',parameters:{type:'object',properties:{path:{type:'string',description:'Folder path, empty for home'}}}}},
+  {type:'function',function:{name:'desktop_command',description:'Sends a natural-language command to the laptop\'s VAYU assistant (it will perform the action with its own tools, e.g. open an app, play music, search the web).',parameters:{type:'object',properties:{text:{type:'string'}},required:['text']}}},
 ];
 function execDeviceTool(name,args){
   if(NATIVE&&NATIVE.execTool){
@@ -381,6 +430,57 @@ function execDeviceTool(name,args){
     }catch(e){ return '{"ok":false,"error":"'+String(e).slice(0,150)+'"}'; }
   }
   return '{"ok":false,"error":"Device control not available on this platform"}';
+}
+
+/* =====================================================================
+   Remote link — control a laptop (VAYU Desktop Remote) from this phone
+   ===================================================================== */
+async function desktopApi(path,opts){
+  const base='http://'+(desktopHost||'').trim();
+  if(!base||!desktopHost.trim()) throw new Error('No desktop link set — add it in Settings');
+  const headers=opts&&opts.headers?opts.headers:{};
+  if(desktopToken) headers['X-Vayu-Token']=desktopToken;
+  const res=await fetch(base+path,Object.assign({},opts,{headers}));
+  if(res.status===401){
+    const auth=await fetch(base+'/auth',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pin:desktopPin||'8421'})});
+    if(!auth.ok) throw new Error('Desktop PIN rejected');
+    const j=await auth.json();
+    desktopToken=j.token||'';
+    headers['X-Vayu-Token']=desktopToken;
+    return await fetch(base+path,Object.assign({},opts,{headers}));
+  }
+  return res;
+}
+async function execDesktopTool(name,args){
+  try{
+    let r;
+    switch(name){
+      case 'desktop_status': r=await desktopApi('/status'); break;
+      case 'desktop_screenshot': {
+        const res=await desktopApi('/screen');
+        const blob=await res.blob();
+        return '{"ok":true,"result":"Screenshot captured ('+Math.round(blob.size/1024)+' KB)","image":"'+blob.type+'"}';
+      }
+      case 'desktop_mouse': r=await desktopApi('/mouse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dx:Number(args.dx||0),dy:Number(args.dy||0)})}); break;
+      case 'desktop_click': r=await desktopApi('/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({button:args.button||'left',clicks:Number(args.clicks||1)})}); break;
+      case 'desktop_type': r=await desktopApi('/type',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:String(args.text||'')})}); break;
+      case 'desktop_volume': r=await desktopApi('/volume',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level:Number(args.level||50)})}); break;
+      case 'desktop_apps': r=await desktopApi('/apps'); break;
+      case 'desktop_focus': r=await desktopApi('/focus',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:String(args.title||'')})}); break;
+      case 'desktop_files': r=await desktopApi('/files?path='+encodeURIComponent(args.path||'')); break;
+      case 'desktop_command': r=await desktopApi('/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:String(args.text||'')})}); break;
+      default: return '{"ok":false,"error":"Unknown desktop action"}';
+    }
+    if(!r) return '{"ok":false,"error":"No response from desktop"}';
+    const text=await r.text();
+    if(!r.ok) return '{"ok":false,"error":"Desktop: '+(text.slice(0,120)||('HTTP '+r.status))+'"}';
+    let pretty=text;
+    try{ const j=JSON.parse(text); pretty=j.result||j.message||j.state||text; }catch(e){}
+    return '{"ok":true,"result":'+JSON.stringify(String(pretty).slice(0,300))+'}';
+  }catch(e){
+    return '{"ok":false,"error":"Desktop unreachable: '+String(e&&e.message||e).slice(0,100)+'"}';
+  }
 }
 
 /* ---------------- state ---------------- */
@@ -401,6 +501,10 @@ let modelChoice=loadPref('model','llama-3.3-70b-versatile');
 let pendingPhoto=null;
 let exchangeCount=0;
 let memExtracting=false;
+let desktopHost=loadPref('desktop','');
+let desktopPin=loadPref('deskpin','8421');
+let desktopToken='';
+let phoneLinkOn=loadPref('phonelink',true);
 
 const chatEl=document.getElementById('chat');
 const statusDot=document.getElementById('statusDot');
@@ -822,6 +926,13 @@ function buildSystemPrompt(){
     +'exact time from the current time given above.\n'
     +'- Some devices lack certain hardware (no flashlight on a Chromebook, no dialer on a '
     +'tablet). If a tool reports it is unavailable, tell the user politely instead of retrying.\n\n'
+    +'REMOTE LINK (desktop computer):\n'
+    +'- The user may link a laptop running VAYU Desktop (its Remote server). You can control it: '
+    +'see its screen (desktop_screenshot), move/click the mouse, type text, set volume, list and '
+    +'focus windows, browse files, or send it natural-language commands via desktop_command.\n'
+    +'- Use desktop_status first to check the link. If it fails, tell the user the laptop is '
+    +'unreachable and to check Settings → Remote Link (same WiFi or tunnel).\n'
+    +'- Never pretend you looked at a screenshot you did not actually capture.\n\n'
     +(MODE_PROMPTS[currentMode]||'');
 }
 function buildMessages(userText, extra){
@@ -869,7 +980,12 @@ async function groqChat(messages, image){
             const fn=tc.function;
             let args={};
             try{ args=JSON.parse(fn.arguments||'{}'); }catch(e){}
-            const result=execDeviceTool(fn.name,args);
+            let result;
+            if(fn.name.indexOf('desktop_')===0){
+              result=await execDesktopTool(fn.name,args);
+            }else{
+              result=execDeviceTool(fn.name,args);
+            }
             let pretty=result;
             try{ const j=JSON.parse(result); pretty=(j.ok!==false?'✓':'✗')+' '+(j.result||j.error||'done'); }catch(e){}
             writeLog('sys','TOOL: '+fn.name+' → '+pretty.slice(0,80));
@@ -1245,14 +1361,21 @@ function renderSettings(){
   document.getElementById('setHaptic').className='toggle'+(hapticOn?' on':'');
   document.getElementById('setWake').className='toggle'+(wakeOn?' on':'');
   document.getElementById('setMem').className='toggle'+(memOn?' on':'');
+  document.getElementById('setDesktop').value=desktopHost;
+  document.getElementById('setDesktopPin').value=desktopPin;
+  document.getElementById('setPhoneLink').className='toggle'+(phoneLinkOn?' on':'');
+  const pli=document.getElementById('phoneLinkInfo');
+  if(pli) pli.innerHTML=phoneLinkOn?'<b style="color:var(--green)">ON</b> — laptop can control this phone.<br>Address: <b style="color:var(--pri)">'+(desktopHost?'':'')+'</b>'+(phoneLinkInfoAddr||'')+'<br><span style="font-size:9px">Use it in VAYU Desktop → Settings → Phone IP. PIN: '+desktopPin+'</span>'
+    :'<b style="color:var(--red)">OFF</b> — phone is not controllable remotely.';
   const si=document.getElementById('sysInfo');
-  si.innerHTML='<b>VAYU v1.1.0</b><br><span style="color:var(--text-dim)">Groq Edition · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
+  si.innerHTML='<b>VAYU v1.3.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
   if(NATIVE){ try{ NATIVE.getSysInfo(); }catch(e){} }
   else{
     const mem=loadMemory();
-    si.innerHTML='<b>VAYU v1.1.0</b><br><span style="color:var(--text-dim)">Groq Edition · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
+    si.innerHTML='<b>VAYU v1.3.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
   }
 }
+let phoneLinkInfoAddr='';
 function renderModes(){
   for(const m of ['default','research','professional']){
     document.getElementById('mode-'+m).className='mode-card'+(currentMode===m?' active':'');
@@ -1273,6 +1396,7 @@ function togglePref(k){
   if(k==='haptic'){ hapticOn=!hapticOn; savePref('haptic',hapticOn); document.getElementById('setHaptic').className='toggle'+(hapticOn?' on':''); }
   if(k==='wake'){ wakeOn=!wakeOn; savePref('wake',wakeOn); document.getElementById('setWake').className='toggle'+(wakeOn?' on':''); if(NATIVE){ try{ NATIVE.setWakeWord(wakeOn); }catch(e){} } showToast('Wake word '+(wakeOn?'ON':'OFF')); }
   if(k==='mem'){ memOn=!memOn; savePref('mem',memOn); document.getElementById('setMem').className='toggle'+(memOn?' on':''); }
+  if(k==='phonelink'){ phoneLinkOn=!phoneLinkOn; savePref('phonelink',phoneLinkOn); document.getElementById('setPhoneLink').className='toggle'+(phoneLinkOn?' on':''); if(NATIVE){ try{ NATIVE.setPhoneLink(phoneLinkOn); }catch(e){} } showToast('Phone link '+(phoneLinkOn?'ON':'OFF')); renderSettings(); }
 }
 function setRate(v){ savePref('rate',parseFloat(v)); if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(v)); }catch(e){} } }
 function saveSettings(){
@@ -1283,6 +1407,11 @@ function saveSettings(){
   }
   modelChoice=document.getElementById('setModel').value;
   savePref('model',modelChoice);
+  desktopHost=document.getElementById('setDesktop').value.trim();
+  desktopPin=document.getElementById('setDesktopPin').value.trim()||'8421';
+  savePref('desktop',desktopHost);
+  savePref('deskpin',desktopPin);
+  desktopToken='';
   writeLog('sys','Settings saved.');
   showToast('Settings saved');
   closeOverlay('settings');
@@ -1314,6 +1443,14 @@ function onSysInfo(json){
         ' · RAM: '+(s.ramPct>=0?s.ramPct+'%':'--')+'<br>'+
         'STORAGE: '+(s.storage||'--')+' · NET: '+(s.network||'--')+'<br>'+
         'UPTIME: '+(s.uptime||'--')+' · MEMORY: '+loadMemory().length+' facts';
+    }
+    if(s.phoneLink){
+      phoneLinkInfoAddr=s.phoneLink;
+      const pli=document.getElementById('phoneLinkInfo');
+      if(pli&&document.getElementById('ov-settings').classList.contains('show')){
+        pli.innerHTML=phoneLinkOn?'<b style="color:var(--green)">ON</b> — laptop can control this phone.<br>Address: <b style="color:var(--pri)">'+escapeHtml(s.phoneLink)+'</b><br><span style="font-size:9px">Use it in VAYU Desktop → Settings → Phone IP. PIN: '+escapeHtml(desktopPin)+'</span>'
+          :'<b style="color:var(--red)">OFF</b> — phone is not controllable remotely.';
+      }
     }
   }catch(e){}
 }
@@ -1354,9 +1491,18 @@ function initVayu(){
   document.getElementById('splash').className='splash hidden';
   document.getElementById('apiSetup').className='api-setup';
   document.getElementById('app').className='show';
-  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.1.0');
+  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.3.0');
   writeLog('sys','Mode: '+currentMode.toUpperCase()+'. Model: '+modelChoice);
   if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(loadPref('rate',0.85))); NATIVE.setWakeWord(wakeOn); NATIVE.getSysInfo(); }catch(e){} }
+  maybeShowUpdate();
+}
+function maybeShowUpdate(){
+  try{ if(localStorage.getItem('vayu_seen_update')==='1.3.0') return; }catch(e){}
+  setTimeout(()=>{ document.getElementById('ov-update').className='overlay upd-overlay show'; },1500);
+}
+function dismissUpdate(){
+  try{ localStorage.setItem('vayu_seen_update','1.3.0'); }catch(e){}
+  document.getElementById('ov-update').className='overlay upd-overlay';
 }
 function saveConv(){
   try{ localStorage.setItem('vayu_conv',JSON.stringify(convHistory)); }catch(e){}

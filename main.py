@@ -32,6 +32,7 @@ from actions.code_helper       import code_helper
 from actions.dev_agent         import dev_agent
 from actions.web_search        import web_search as web_search_action
 from actions.computer_control  import computer_control
+from actions.phone_control     import phone_control
 from actions.game_updater      import game_updater
 from actions.clipboard_actions import clipboard_read, clipboard_write
 from actions.auto_start        import auto_start_enabled, set_auto_start
@@ -108,6 +109,42 @@ def _update_memory_async(user_text: str, vayu_text: str) -> None:
             print(f"[Memory] ⚠️ {e}")
 
 TOOL_DECLARATIONS = [
+    {
+        "name": "phone_control",
+        "description": (
+            "Controls the user's Android phone through VAYU Android (linked via "
+            "Settings → Phone IP). Can open apps, send SMS, dial calls, set alarms "
+            "and timers, control volume/brightness/flashlight/WiFi/Bluetooth/"
+            "auto-rotate/Do Not Disturb, control media, share text, use the "
+            "clipboard, check battery, list installed apps, open phone settings, "
+            "or fetch phone status. Use action='status' to check the link first."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "action": {
+                    "type": "STRING",
+                    "description": (
+                        "open_app | send_sms | make_call | open_url | navigate | "
+                        "set_alarm | set_timer | set_volume | media | flashlight | "
+                        "set_wifi | set_bluetooth | set_brightness | rotate | dnd | "
+                        "vibrate | share | clipboard | battery | device_info | "
+                        "list_apps | open_settings | status"
+                    )
+                },
+                "args": {
+                    "type": "OBJECT",
+                    "description": (
+                        "JSON object of parameters for the action, e.g. "
+                        "{\"app_name\": \"WhatsApp\"} for open_app, "
+                        "{\"hour\": 7, \"minute\": 30} for set_alarm, "
+                        "{\"number\": \"+91...\", \"message\": \"Hi\"} for send_sms."
+                    )
+                }
+            },
+            "required": ["action"]
+        }
+    },
     {
         "name": "open_app",
         "description": (
@@ -1015,6 +1052,10 @@ class VayuLive:
 
             elif name == "computer_control":
                 r = await loop.run_in_executor(None, lambda: computer_control(parameters=args, player=self.ui))
+                result = r or "Done."
+
+            elif name == "phone_control":
+                r = await loop.run_in_executor(None, lambda: phone_control(parameters=args, player=self.ui))
                 result = r or "Done."
 
             elif name == "game_updater":

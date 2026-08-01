@@ -1100,7 +1100,7 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("VAYU — Settings")
-        self.setFixedSize(440, 390)
+        self.setFixedSize(440, 470)
         self.setStyleSheet(f"""
             QDialog {{
                 background: {C.BG}; color: {C.TEXT};
@@ -1200,6 +1200,35 @@ class SettingsDialog(QDialog):
             self._auto_start_cb.setEnabled(False)
         layout.addWidget(self._auto_start_cb)
 
+        layout.addSpacing(4)
+        layout.addWidget(section("PHONE LINK"))
+
+        phone_row = QHBoxLayout()
+        self._phone_ip = QLineEdit()
+        self._phone_ip.setPlaceholderText("e.g. 192.168.1.20")
+        self._phone_ip.setFont(QFont("Courier New", 9))
+        self._phone_ip.setStyleSheet(self._groq_key.styleSheet())
+        phone_row.addWidget(QLabel("Phone IP:"))
+        phone_row.addWidget(self._phone_ip, stretch=1)
+        layout.addLayout(phone_row)
+
+        pin_row = QHBoxLayout()
+        self._phone_pin = QLineEdit()
+        self._phone_pin.setPlaceholderText("8421")
+        self._phone_pin.setEchoMode(QLineEdit.EchoMode.Password)
+        self._phone_pin.setFont(QFont("Courier New", 9))
+        self._phone_pin.setStyleSheet(self._groq_key.styleSheet())
+        pin_row.addWidget(QLabel("Phone PIN:"))
+        pin_row.addWidget(self._phone_pin, stretch=1)
+        layout.addLayout(pin_row)
+
+        link_hint = QLabel("Phone IP + PIN are shown on the phone's VAYU app → Settings → Remote Link. "
+                           "This lets VAYU control your phone by voice (open apps, alarms, SMS, flashlight…).")
+        link_hint.setFont(QFont("Courier New", 7))
+        link_hint.setWordWrap(True)
+        link_hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        layout.addWidget(link_hint)
+
         layout.addStretch()
 
         btn_row = QHBoxLayout()
@@ -1239,6 +1268,8 @@ class SettingsDialog(QDialog):
             self._gemini_key.setText(keys.get("gemini_api_key", ""))
             self._or_key.setText(keys.get("openrouter_api_key", ""))
             self._groq_key.setText(keys.get("groq_api_key", ""))
+            self._phone_ip.setText(keys.get("phone_ip", ""))
+            self._phone_pin.setText(keys.get("phone_pin", "8421"))
         except Exception:
             pass
 
@@ -1246,6 +1277,8 @@ class SettingsDialog(QDialog):
         gemini  = self._gemini_key.text().strip()
         or_key  = self._or_key.text().strip()
         groq_key = self._groq_key.text().strip()
+        phone_ip = self._phone_ip.text().strip()
+        phone_pin = self._phone_pin.text().strip() or "8421"
 
         try:
             import json
@@ -1262,6 +1295,9 @@ class SettingsDialog(QDialog):
                 data["openrouter_api_key"] = or_key
             if groq_key:
                 data["groq_api_key"] = groq_key
+            if phone_ip:
+                data["phone_ip"] = phone_ip
+            data["phone_pin"] = phone_pin
             api_file.write_text(json.dumps(data, indent=4), encoding="utf-8")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to save keys: {e}")

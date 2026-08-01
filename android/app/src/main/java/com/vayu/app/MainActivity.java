@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_PERMS = 100;
     private static final int REQ_CAMERA = 200;
     private static final int REQ_SETTINGS = 300;
+    private static final int PHONE_LINK_PORT = 8080;
 
     private static final java.util.Map<String, String[]> KNOWN_APPS = buildKnownApps();
     private static java.util.Map<String, String[]> buildKnownApps() {
@@ -194,6 +195,8 @@ public class MainActivity extends AppCompatActivity {
     private File cameraFile;
     private Runnable timerRunnable;
     private final List<String> recentTools = new ArrayList<>();
+    private PhoneLinkServer phoneServer;
+    private String linkPin = "8421";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -208,6 +211,12 @@ public class MainActivity extends AppCompatActivity {
         if (ACTION_ALARM.equals(getIntent().getAction())) {
             fireAlarm(getIntent().getStringExtra("label"));
         }
+        linkPin = getSharedPreferences("vayu_prefs", MODE_PRIVATE)
+                .getString("link_pin", "8421");
+        if (getSharedPreferences("vayu_prefs", MODE_PRIVATE).getBoolean("phone_link", true)) {
+            startPhoneLink();
+        }
+        notifyUpdateIfNew();
     }
 
     /* ---------------- notifications ---------------- */
@@ -367,6 +376,26 @@ public class MainActivity extends AppCompatActivity {
         public void getSysInfo() {
             runOnUiThread(() -> callJs("window.VayuNative&&window.VayuNative.onSysInfo(" +
                     JSONObject.quote(buildSysInfoJson()) + ")"));
+        }
+
+        @JavascriptInterface
+        public void setPhoneLink(boolean enabled) {
+            getSharedPreferences("vayu_prefs", MODE_PRIVATE)
+                    .edit().putBoolean("phone_link", enabled).apply();
+            runOnUiThread(() -> {
+                if (enabled) startPhoneLink();
+                else stopPhoneLink();
+            });
+        }
+
+        @JavascriptInterface
+        public void setLinkPin(String pin) {
+            if (pin != null && !pin.trim().isEmpty()) {
+                linkPin = pin.trim();
+                getSharedPreferences("vayu_prefs", MODE_PRIVATE)
+                        .edit().putString("link_pin", linkPin).apply();
+                if (phoneServer != null) phoneServer.setPin(linkPin);
+            }
         }
 
         /* ---- device control: executed by Groq function calling ---- */
@@ -715,9 +744,242 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /* ---------------- helpers ---------------- */
-    private String findAppPackage(String name) {
-        String lower = name.toLowerCase(Locale.ROOT).trim();
+    /* ---------------- Phone link: laptop controls this phone ---------------- */
+    private void startPhoneLink() {
+        if (phoneServer != null && phoneServer.isRunning()) return;
+        try {
+            phoneServer = new PhoneLinkServer(PHONE_LINK_PORT, linkPin);
+            phoneServer.start();
+            Log.i(TAG, "Phone link on " + getLanIp() + ":" + PHONE_LINK_PORT);
+        } catch (Exception e) {
+            Log.e(TAG, "phone link start: " + e);
+        }
+    }
+
+    private void stopPhoneLink() {
+        if (phoneServer != null) {
+            phoneServer.stop();
+            phoneServer = null;
+        }
+    }
+
+    private String getLanIp() {
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> nis =
+                    java.net.NetworkInterface.getNetworkInterfaces();
+            while (nis != null && nis.hasMoreElements()) {
+                java.net.NetworkInterface ni = nis.nextElement();
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                java.util.Enumeration<java.net.InetAddress> as = ni.getInetAddresses();
+                while (as.hasMoreElements()) {
+                    java.net.InetAddress a = as.nextElement();
+                    if (!a.isLoopbackAddress() && a instanceof java.net.Inet4Address) {
+                        return a.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "127.0.0.1";
+    }
+
+    private String phoneLinkUrl() {
+        return (phoneServer != null && phoneServer.isRunning())
+                ? "http://" + getLanIp() + ":" + PHONE_LINK_PORT : "";
+    }
+
+    private void notifyUpdateIfNew() {
+        try {
+            android.content.SharedPreferences prefs =
+                    getSharedPreferences("vayu_prefs", MODE_PRIVATE);
+            int lastVer = prefs.getInt("last_version", 0);
+            int curVer = appVersionCode();
+            if (curVer <= lastVer) return;
+            prefs.edit().putInt("last_version", curVer).apply();
+            if (curVer >= 4) {
+                notify("VAYU 1.3.0 — Jarvis Edition installed",
+                        "Jarvis-style voice, Bixby-like app opening on any Android device, auto-rotate, Do Not Disturb and cross-device control. Open VAYU to see what's new.",
+                        3001);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private int appVersionCode() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private String appVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "1.3.0";
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        notifyUpdateIfNew();
+    }
+
+    /* ---- tiny stdlib HTTP server: GET /status, GET /auth?pin=, POST /tool ---- */
+    private class PhoneLinkServer {
+        private final int port;
+        private volatile boolean running = false;
+        private volatile String pin;
+        private volatile String token;
+        private java.net.ServerSocket socket;
+        private Thread thread;
+
+        PhoneLinkServer(int port, String pin) {
+            this.port = port;
+            this.pin = pin;
+        }
+
+        boolean isRunning() { return running; }
+
+        void setPin(String p) { this.pin = p; }
+
+        void start() throws Exception {
+            socket = new java.net.ServerSocket(port);
+            running = true;
+            thread = new Thread(this::acceptLoop, "vayu-phone-link");
+            thread.setDaemon(true);
+            thread.start();
+        }
+
+        void stop() {
+            running = false;
+            try { if (socket != null) socket.close(); } catch (Exception ignored) {}
+        }
+
+        private void acceptLoop() {
+            while (running) {
+                try {
+                    java.net.Socket s = socket.accept();
+                    handle(s);
+                } catch (Exception ignored) {}
+            }
+        }
+
+        private void handle(java.net.Socket s) {
+            try {
+                s.setSoTimeout(8000);
+                java.io.BufferedReader in = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(s.getInputStream()));
+                java.io.OutputStream out = s.getOutputStream();
+
+                String requestLine = in.readLine();
+                if (requestLine == null) { s.close(); return; }
+                String[] parts = requestLine.split(" ");
+                String method = parts.length > 0 ? parts[0] : "";
+                String path = parts.length > 1 ? parts[1] : "/";
+
+                String line;
+                int contentLength = 0;
+                while ((line = in.readLine()) != null && !line.isEmpty()) {
+                    String lower = line.toLowerCase();
+                    if (lower.startsWith("content-length:")) {
+                        try { contentLength = Integer.parseInt(line.split(":")[1].trim()); }
+                        catch (Exception ignored) {}
+                    }
+                }
+                String body = "";
+                if (contentLength > 0 && contentLength < 4096) {
+                    char[] buf = new char[contentLength];
+                    int n = in.read(buf, 0, contentLength);
+                    if (n > 0) body = new String(buf, 0, n);
+                }
+
+                String response;
+                String status = "200 OK";
+
+                String q = "";
+                if (path.contains("?")) {
+                    int qi = path.indexOf('?');
+                    q = path.substring(qi + 1);
+                    path = path.substring(0, qi);
+                }
+
+                if ("GET".equals(method) && "/status".equals(path)) {
+                    JSONObject o = new JSONObject(buildSysInfoJson());
+                    o.put("phoneLink", phoneLinkUrl());
+                    o.put("version", appVersionName());
+                    response = o.toString();
+                } else if ("GET".equals(method) && "/auth".equals(path)) {
+                    String given = param(q, "pin");
+                    if (given != null && given.equals(pin)) {
+                        token = java.util.UUID.randomUUID().toString().replace("-", "");
+                        response = "{\"token\":\"" + token + "\"}";
+                    } else {
+                        status = "401 Unauthorized";
+                        response = "{\"error\":\"wrong pin\"}";
+                    }
+                } else if ("POST".equals(method) && "/tool".equals(path)) {
+                    if (!authorized(s, q)) {
+                        status = "401 Unauthorized";
+                        response = "{\"error\":\"unauthorized\"}";
+                    } else {
+                        try {
+                            JSONObject req = new JSONObject(body);
+                            String name = req.optString("name", "");
+                            JSONObject args = req.optJSONObject("args");
+                            if (args == null) args = new JSONObject();
+                            String result = runTool(name, args);
+                            recentTools.add(name);
+                            response = new JSONObject().put("ok", true)
+                                    .put("result", result).toString();
+                        } catch (Exception e) {
+                            status = "200 OK";
+                            response = "{\"ok\":false,\"error\":\"" +
+                                    JSONObject.quote(e.getMessage() == null
+                                            ? "tool failed" : e.getMessage()) + "\"}";
+                        }
+                    }
+                } else {
+                    status = "404 Not Found";
+                    response = "{\"error\":\"not found\"}";
+                }
+
+                byte[] bytes = response.getBytes("UTF-8");
+                String head = "HTTP/1.1 " + status + "\r\n"
+                        + "Content-Type: application/json\r\n"
+                        + "Content-Length: " + bytes.length + "\r\n"
+                        + "Access-Control-Allow-Origin: *\r\n"
+                        + "Access-Control-Allow-Headers: X-Vayu-Token, Content-Type\r\n"
+                        + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                        + "Connection: close\r\n\r\n";
+                out.write(head.getBytes("UTF-8"));
+                out.write(bytes);
+                out.flush();
+                s.close();
+            } catch (Exception ignored) {
+                try { s.close(); } catch (Exception ignored2) {}
+            }
+        }
+
+        private boolean authorized(java.net.Socket s, String q) {
+            return token != null && token.length() > 0 && param(q, "token") != null
+                    && param(q, "token").equals(token);
+        }
+
+        private String param(String q, String key) {
+            try {
+                for (String pair : q.split("&")) {
+                    String[] kv = pair.split("=", 2);
+                    if (kv.length == 2 && kv[0].equals(key)) {
+                        return java.net.URLDecoder.decode(kv[1], "UTF-8");
+                    }
+                }
+            } catch (Exception ignored) {}
+            return null;
+        }
+    }
+
+    private String findAppPackage(String name) {        String lower = name.toLowerCase(Locale.ROOT).trim();
         if (lower.isEmpty()) return null;
         String[] curated = KNOWN_APPS.get(lower);
         if (curated != null) {
@@ -821,6 +1083,7 @@ public class MainActivity extends AppCompatActivity {
             long up = SystemClock.elapsedRealtime() / 1000;
             o.put("uptime", String.format(Locale.US, "%dh %02dm", up / 3600, (up % 3600) / 60));
             o.put("ramTotal", formatSize(total));
+            o.put("phoneLink", phoneLinkUrl());
             return o.toString();
         } catch (Exception e) {
             return "{}";
@@ -1064,6 +1327,7 @@ public class MainActivity extends AppCompatActivity {
         }
         if (tts != null) tts.shutdown();
         if (timerRunnable != null) mainHandler.removeCallbacks(timerRunnable);
+        stopPhoneLink();
         super.onDestroy();
     }
 
