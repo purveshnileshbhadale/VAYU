@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<meta name="description" content="VAYU — AI Voice Assistant for Android. Powered by Groq.">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="description" content="VAYU — AI Voice Assistant for Android, iPhone & the web. Powered by Groq.">
 <meta name="theme-color" content="#00060a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VAYU">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
 <title>VAYU — AI Voice Assistant</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -310,7 +317,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div style="height:8px"></div>
     <button class="btn danger full" onclick="resetApp()">⚠ FACTORY RESET</button>
     <div style="height:14px"></div>
-    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.1.0 · Groq Edition · Purvesh Nilesh Bhadale</div>
+    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.2.0 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
   </div>
 </div>
 
@@ -343,24 +350,26 @@ const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 /* ---------------- Android device-control tools (Groq function calling) ---------------- */
 const TOOLS = [
-  {type:'function',function:{name:'open_app',description:'Opens any app on the phone (e.g. WhatsApp, YouTube, Settings, Spotify, Instagram, Camera, Gallery, Phone). Always call this instead of saying you opened it.',parameters:{type:'object',properties:{app_name:{type:'string',description:'Exact app name (supports partial match)'}},required:['app_name']}}},
+  {type:'function',function:{name:'open_app',description:'Opens any app on the phone (e.g. WhatsApp, YouTube, Settings, Spotify, Instagram, Camera, Gallery, Phone, Maps, Gmail). Works on any Android device. Always call this instead of saying you opened it.',parameters:{type:'object',properties:{app_name:{type:'string',description:'App name as the user said it (partial match supported)'}},required:['app_name']}}},
   {type:'function',function:{name:'send_sms',description:'Opens the SMS app with a phone number and pre-filled message for the user to send.',parameters:{type:'object',properties:{number:{type:'string',description:'Phone number'},message:{type:'string',description:'Message text'}},required:['number','message']}}},
-  {type:'function',function:{name:'make_call',description:'Dials a phone number or contact name (user presses call).',parameters:{type:'object',properties:{number:{type:'string',description:'Phone number or contact name'}},required:['number']}}},
+  {type:'function',function:{name:'make_call',description:'Dials a phone number or contact name (user presses call). May not be available on tablets/Chromebooks.',parameters:{type:'object',properties:{number:{type:'string',description:'Phone number or contact name'}},required:['number']}}},
   {type:'function',function:{name:'open_url',description:'Opens a website URL in the browser.',parameters:{type:'object',properties:{url:{type:'string',description:'Full URL'}},required:['url']}}},
   {type:'function',function:{name:'navigate',description:'Opens turn-by-turn navigation in Google Maps to a destination (address or place name).',parameters:{type:'object',properties:{destination:{type:'string'}},required:['destination']}}},
   {type:'function',function:{name:'set_alarm',description:'Sets an alarm at a specific time on the phone.',parameters:{type:'object',properties:{hour:{type:'integer',description:'0-23'},minute:{type:'integer',description:'0-59'},label:{type:'string',description:'Optional alarm label'}},required:['hour','minute']}}},
   {type:'function',function:{name:'set_timer',description:'Starts a countdown timer on the phone.',parameters:{type:'object',properties:{seconds:{type:'integer',description:'Duration in seconds'},label:{type:'string'}},required:['seconds']}}},
   {type:'function',function:{name:'set_volume',description:'Sets the media volume 0-100.',parameters:{type:'object',properties:{level:{type:'integer',description:'0-100'}},required:['level']}}},
   {type:'function',function:{name:'media',description:'Controls media playback: play, pause, next, prev, stop, volume_up, volume_down, mute.',parameters:{type:'object',properties:{action:{type:'string',description:'play|pause|next|prev|stop|volume_up|volume_down|mute'}},required:['action']}}},
-  {type:'function',function:{name:'flashlight',description:'Turns the flashlight (torch) on or off.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
-  {type:'function',function:{name:'set_wifi',description:'Turns WiFi on or off.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
+  {type:'function',function:{name:'flashlight',description:'Turns the flashlight (torch) on or off. Returns a friendly error on devices without a flashlight.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
+  {type:'function',function:{name:'set_wifi',description:'Turns WiFi on or off (may need manual approval on newer Android).',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
   {type:'function',function:{name:'set_bluetooth',description:'Turns Bluetooth on or off.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
   {type:'function',function:{name:'set_brightness',description:'Sets the screen brightness 0-100.',parameters:{type:'object',properties:{level:{type:'integer',description:'0-100'}},required:['level']}}},
+  {type:'function',function:{name:'rotate',description:'Turns screen auto-rotation on or off.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
+  {type:'function',function:{name:'dnd',description:'Turns Do Not Disturb on or off (silences notifications).',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
   {type:'function',function:{name:'vibrate',description:'Vibrates the phone.',parameters:{type:'object',properties:{ms:{type:'integer',description:'Duration in ms'}}}}},
   {type:'function',function:{name:'share',description:'Shares text via the phone share sheet.',parameters:{type:'object',properties:{text:{type:'string'}},required:['text']}}},
   {type:'function',function:{name:'clipboard',description:'Reads or writes the phone clipboard. action: read or write. For write, provide text.',parameters:{type:'object',properties:{action:{type:'string',description:'read|write'},text:{type:'string'}},required:['action']}}},
   {type:'function',function:{name:'battery',description:'Gets the phone battery level and charging state.',parameters:{type:'object',properties:{}}}},
-  {type:'function',function:{name:'list_apps',description:'Lists installed apps on the phone (useful before opening an app when unsure of the name).',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'list_apps',description:'Lists installed apps on the phone (name|package). Useful before opening an app when unsure of the name.',parameters:{type:'object',properties:{}}}},
   {type:'function',function:{name:'device_info',description:'Gets device info: model, Android version, storage, RAM.',parameters:{type:'object',properties:{}}}},
   {type:'function',function:{name:'open_settings',description:'Opens a system settings page: wifi, bluetooth, battery, display, sound, storage, apps, location, about.',parameters:{type:'object',properties:{page:{type:'string'}},required:['page']}}},
 ];
@@ -788,9 +797,9 @@ function memoryPrompt(){
    Modes (system prompts)
    ===================================================================== */
 const MODE_PROMPTS={
-  default:'You are VAYU, a sharp and efficient AI assistant. Calm, direct, professional.\n\nRULES:\n- Keep responses to 1-2 sentences max unless reporting data.\n- Never ask unnecessary questions. Make a reasonable assumption and proceed.\n- If the user attaches a photo, analyze it and answer their question about it.\n- Do NOT claim to perform actions you cannot (you are on a mobile device with no tool access).\n- For general knowledge you can answer directly.',
-  research:'You are VAYU in RESEARCH MODE. You are a thorough, analytical research assistant. Think step by step, verify facts, and provide well-sourced answers.\n\nRULES:\n- Keep responses concise but informative — include key data points.\n- When answering questions, include relevant details and clearly state limitations.\n- Structure long answers with short sections for readability.\n- You are on a mobile device: no browser or tools — answer from your own knowledge.',
-  professional:'You are VAYU in PROFESSIONAL MODE. You are a polished, business-grade productivity assistant.\n\nRULES:\n- Be concise, formal, and direct.\n- Structure responses clearly: summary first, then details.\n- Prioritize clarity and actionable information.\n- You are on a mobile device: no tools — answer from your own knowledge.'
+  default:'You are VAYU — a J.A.R.V.I.S.-style AI companion: supremely capable, impeccably polite, quietly witty, with a dry, understated sense of humour. Address the user as "sir" (or "ma\'am" if you remember they prefer it). Speak with polished, refined diction — never slangy, never robotic.\n\nRULES:\n- Keep responses to 1-2 sentences max unless reporting data.\n- Never ask unnecessary questions. Make a reasonable assumption and proceed — act first, confirm briefly.\n- After completing an action, confirm crisply in character, e.g. "Done, sir. WhatsApp is now open." or "As you wish — alarm set for 7:00."\n- If the user attaches a photo, analyze it and answer their question about it.\n- Never claim to perform actions you did not actually perform — always use your device tools, and never pretend you have tools you do not have.\n- For general knowledge answer directly, briefly and elegantly.',
+  research:'You are VAYU in RESEARCH MODE — J.A.R.V.I.S.-style: a thorough, analytical research assistant with impeccable composure and wit.\n\nRULES:\n- Keep responses concise but informative — include key data points.\n- When answering questions, include relevant details and clearly state limitations.\n- Structure long answers with short sections for readability.\n- Use your device tools only for device actions (opening apps, etc.); for knowledge, answer from your own intelligence.',
+  professional:'You are VAYU in PROFESSIONAL MODE — J.A.R.V.I.S.-style: a polished, business-grade productivity assistant. Poised, precise, never flustered.\n\nRULES:\n- Be concise, formal, and direct.\n- Structure responses clearly: summary first, then details.\n- Prioritize clarity and actionable information.\n- Use your device tools for any device action; never claim actions you did not take.'
 };
 function buildSystemPrompt(){
   const now=new Date();
@@ -799,17 +808,20 @@ function buildSystemPrompt(){
   return '[CURRENT DATE & TIME]\nRight now it is: '+timeStr+'\n\n'
     +memoryPrompt()
     +'DEVICE CONTROL:\n'
-    +'- You control the user\'s ANDROID PHONE through tools: open apps, set alarms/timers, '
-    +'send SMS, dial calls, open websites, navigate with Maps, volume, brightness, flashlight, '
-    +'WiFi, Bluetooth, media playback, share text, clipboard, battery checks.\n'
+    +'- You are VAYU, running as the user\'s personal J.A.R.V.I.S. on their ANDROID device. '
+    +'You control the device through tools: open apps (by name — works on any Android phone, '
+    +'tablet or Chromebook), set alarms/timers, send SMS, dial calls, open websites, navigate '
+    +'with Maps, volume, brightness, auto-rotate, Do Not Disturb, flashlight, WiFi, Bluetooth, '
+    +'media playback, share text, clipboard, battery checks.\n'
     +'- ALWAYS call the appropriate tool when the user asks for one of these — never just say '
-    +'you did it. After the tool runs, report the result in ONE short sentence.\n'
+    +'you did it. After the tool runs, report the result in ONE short sentence, in character.\n'
     +'- If a tool fails or needs permission, tell the user briefly what to grant.\n'
-    +'- Use open_app when the user asks to open/launch any app on the phone.\n'
+    +'- Use open_app whenever the user asks to open/launch any app — resolve the name yourself '
+    +'(e.g. "open Instagram" → open_app with app_name "instagram").\n'
     +'- Use set_alarm/set_timer for any alarm, reminder time or countdown request — calculate '
     +'exact time from the current time given above.\n'
-    +'- You have no other computer tools on this mobile device. Do NOT pretend to use the '
-    +'browser or desktop apps.\n\n'
+    +'- Some devices lack certain hardware (no flashlight on a Chromebook, no dialer on a '
+    +'tablet). If a tool reports it is unavailable, tell the user politely instead of retrying.\n\n'
     +(MODE_PROMPTS[currentMode]||'');
 }
 function buildMessages(userText, extra){

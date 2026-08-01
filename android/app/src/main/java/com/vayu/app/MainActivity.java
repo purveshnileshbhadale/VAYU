@@ -78,6 +78,110 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_CAMERA = 200;
     private static final int REQ_SETTINGS = 300;
 
+    private static final java.util.Map<String, String[]> KNOWN_APPS = buildKnownApps();
+    private static java.util.Map<String, String[]> buildKnownApps() {
+        java.util.Map<String, String[]> m = new java.util.HashMap<>();
+        m.put("whatsapp", new String[]{"com.whatsapp", "com.whatsapp.w4b"});
+        m.put("instagram", new String[]{"com.instagram.android"});
+        m.put("youtube", new String[]{"com.google.android.youtube", "org.videolan.vlc"});
+        m.put("youtube music", new String[]{"com.google.android.apps.youtube.music"});
+        m.put("spotify", new String[]{"com.spotify.music"});
+        m.put("music", new String[]{"com.google.android.apps.youtube.music", "com.spotify.music"});
+        m.put("chrome", new String[]{"com.android.chrome"});
+        m.put("browser", new String[]{"com.android.chrome", "com.microsoft.emmx"});
+        m.put("gmail", new String[]{"com.google.android.gm"});
+        m.put("maps", new String[]{"com.google.android.apps.maps"});
+        m.put("google maps", new String[]{"com.google.android.apps.maps"});
+        m.put("camera", new String[]{"com.android.camera", "com.sec.android.app.camera",
+                "com.miui.camera", "com.google.android.GoogleCamera", "org.lineageos.snap"});
+        m.put("gallery", new String[]{"com.google.android.apps.photos", "com.android.gallery3d",
+                "com.sec.android.gallery3d", "com.miui.gallery"});
+        m.put("photos", new String[]{"com.google.android.apps.photos"});
+        m.put("phone", new String[]{"com.android.dialer", "com.google.android.dialer",
+                "com.sec.android.app.dialertab", "com.samsung.android.dialer"});
+        m.put("dialer", new String[]{"com.android.dialer", "com.google.android.dialer"});
+        m.put("messages", new String[]{"com.google.android.apps.messaging", "com.android.mms"});
+        m.put("sms", new String[]{"com.google.android.apps.messaging", "com.android.mms"});
+        m.put("settings", new String[]{"com.android.settings", "com.google.android.settings"});
+        m.put("play store", new String[]{"com.android.vending"});
+        m.put("playstore", new String[]{"com.android.vending"});
+        m.put("store", new String[]{"com.android.vending"});
+        m.put("telegram", new String[]{"org.telegram.messenger"});
+        m.put("x", new String[]{"com.twitter.android"});
+        m.put("twitter", new String[]{"com.twitter.android"});
+        m.put("facebook", new String[]{"com.facebook.katana"});
+        m.put("snapchat", new String[]{"com.snapchat.android"});
+        m.put("linkedin", new String[]{"com.linkedin.android"});
+        m.put("netflix", new String[]{"com.netflix.mediaclient"});
+        m.put("prime video", new String[]{"com.amazon.avod.thirdpartyclient"});
+        m.put("amazon", new String[]{"com.amazon.mShop.android.shopping"});
+        m.put("flipkart", new String[]{"com.flipkart.android"});
+        m.put("meesho", new String[]{"com.meesho.supply"});
+        m.put("paytm", new String[]{"net.one97.paytm"});
+        m.put("phonepe", new String[]{"com.phonepe.app"});
+        m.put("gpay", new String[]{"com.google.android.apps.nbu.paisa.user"});
+        m.put("google pay", new String[]{"com.google.android.apps.nbu.paisa.user"});
+        m.put("truecaller", new String[]{"com.truecaller"});
+        m.put("calculator", new String[]{"com.google.android.calculator", "com.sec.android.app.popupcalculator",
+                "com.miui.calculator", "com.android.calculator2"});
+        m.put("clock", new String[]{"com.google.android.deskclock", "com.sec.android.app.clockpackage"});
+        m.put("alarm", new String[]{"com.google.android.deskclock", "com.sec.android.app.clockpackage"});
+        m.put("calendar", new String[]{"com.google.android.calendar", "com.samsung.android.calendar"});
+        m.put("files", new String[]{"com.google.android.apps.nbu.files", "com.android.documentsui",
+                "com.sec.android.app.myfiles", "com.mi.android.globalFileexplorer"});
+        m.put("file manager", new String[]{"com.google.android.apps.nbu.files", "com.android.documentsui"});
+        m.put("notes", new String[]{"com.google.android.keep", "com.samsung.android.app.notes"});
+        m.put("keep", new String[]{"com.google.android.keep"});
+        m.put("drive", new String[]{"com.google.android.apps.docs"});
+        m.put("docs", new String[]{"com.google.android.apps.docs.editors.docs"});
+        m.put("sheets", new String[]{"com.google.android.apps.docs.editors.sheets"});
+        m.put("slides", new String[]{"com.google.android.apps.docs.editors.slides"});
+        m.put("meet", new String[]{"com.google.android.apps.meetings", "com.google.android.apps.tachyon"});
+        m.put("zoom", new String[]{"us.zoom.videomeetings"});
+        m.put("weather", new String[]{"com.google.android.apps.weather", "com.samsung.android.weather"});
+        m.put("hotstar", new String[]{"in.startv.hotstar"});
+        m.put("hot star", new String[]{"in.startv.hotstar"});
+        m.put("shareit", new String[]{"com.lenovo.anyshare.gps"});
+        m.put("viber", new String[]{"com.viber.voip"});
+        m.put("discord", new String[]{"com.discord"});
+        m.put("signal", new String[]{"org.thoughtcrime.securesms"});
+        m.put("reddit", new String[]{"com.reddit.frontpage"});
+        m.put("pinterest", new String[]{"com.pinterest"});
+        m.put("tiktok", new String[]{"com.zhiliaoapp.musically"});
+        m.put("duolingo", new String[]{"com.duolingo"});
+        m.put("chatgpt", new String[]{"com.openai.chatgpt"});
+        m.put("chat gpt", new String[]{"com.openai.chatgpt"});
+        m.put("gemini", new String[]{"com.google.android.apps.bard"});
+        m.put("google", new String[]{"com.google.android.googlequicksearchbox"});
+        m.put("google assistant", new String[]{"com.google.android.googlequicksearchbox"});
+        m.put("youtube kids", new String[]{"com.google.android.apps.youtube.kids"});
+        m.put("pubg", new String[]{"com.tencent.ig", "com.pubg.imobile"});
+        m.put("bgmi", new String[]{"com.pubg.imobile"});
+        m.put("free fire", new String[]{"com.dts.freefireth"});
+        m.put("canva", new String[]{"com.canva.editor"});
+        m.put("capcut", new String[]{"com.lemon.lvoverseas"});
+        m.put("inshot", new String[]{"com.camerasideas.instashot"});
+        m.put("vsco", new String[]{"com.vsco.cam"});
+        m.put("shazam", new String[]{"com.shazam.android"});
+        m.put("soundcloud", new String[]{"com.soundcloud.android"});
+        m.put("audible", new String[]{"com.audible.application"});
+        m.put("kindle", new String[]{"com.amazon.kindle"});
+        m.put("swiggy", new String[]{"in.swiggy.android"});
+        m.put("zomato", new String[]{"com.application.zomato"});
+        m.put("uber", new String[]{"com.ubercab"});
+        m.put("ola", new String[]{"com.olacabs.customer"});
+        m.put("irctc", new String[]{"cris.org.in.prs.ima"});
+        m.put("paytm money", new String[]{"com.paytm.money"});
+        m.put("upi", new String[]{"com.google.android.apps.nbu.paisa.user", "com.phonepe.app", "net.one97.paytm"});
+        m.put("youtube tv", new String[]{"com.google.android.apps.youtube.unplugged"});
+        m.put("maps gps", new String[]{"com.google.android.apps.maps"});
+        m.put("recorder", new String[]{"com.google.android.apps.recorder", "com.samsung.android.voice recorder"});
+        m.put("voice recorder", new String[]{"com.google.android.apps.recorder", "com.samsung.android.voice recorder"});
+        m.put("health", new String[]{"com.google.android.apps.fitness", "com.samsung.android.service.health"});
+        m.put("samsung health", new String[]{"com.samsung.android.service.health"});
+        return m;
+    }
+
     private WebView webView;
     private AndroidBridge bridge;
     private SpeechRecognizer speechRecognizer;
@@ -287,7 +391,7 @@ public class MainActivity extends AppCompatActivity {
     private String runTool(String name, JSONObject args) throws Exception {
         switch (name) {
             case "open_app": {
-                String app = args.optString("app_name", "");
+                String app = args.optString("app_name", "").trim();
                 if (app.isEmpty()) return "No app name given";
                 String pkg = findAppPackage(app);
                 if (pkg == null) {
@@ -306,8 +410,11 @@ public class MainActivity extends AppCompatActivity {
                 Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
                 List<ResolveInfo> ris = getPackageManager().queryIntentActivities(launcher, 0);
                 JSONArray arr = new JSONArray();
-                for (ResolveInfo ri : ris) arr.put(ri.loadLabel(getPackageManager()).toString());
-                return "Installed apps: " + arr.toString();
+                for (ResolveInfo ri : ris) {
+                    String label = ri.loadLabel(getPackageManager()).toString();
+                    arr.put(label + "|" + ri.activityInfo.packageName);
+                }
+                return "Installed apps (name|package): " + arr.toString();
             }
             case "send_sms": {
                 String num = args.optString("number", "");
@@ -330,8 +437,12 @@ public class MainActivity extends AppCompatActivity {
                     if (num != null) target = num;
                     else return "Contact '" + target + "' not found in contacts";
                 }
-                startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(target))));
-                return "Dialing " + target;
+                try {
+                    startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(target))));
+                    return "Dialing " + target;
+                } catch (ActivityNotFoundException e) {
+                    return "No dialer app found on this device (tablets and Chromebooks may not support calls)";
+                }
             }
             case "open_url": {
                 String url = args.optString("url", "");
@@ -419,15 +530,29 @@ public class MainActivity extends AppCompatActivity {
                 boolean on = args.optBoolean("on", true);
                 CameraManager cm = (CameraManager) getSystemService(CAMERA_SERVICE);
                 String id = null;
-                for (String cid : cm.getCameraIdList()) {
-                    CameraCharacteristics cc = cm.getCameraCharacteristics(cid);
-                    Integer facing = cc.get(CameraCharacteristics.LENS_FACING);
-                    if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
-                        id = cid; break;
+                try {
+                    for (String cid : cm.getCameraIdList()) {
+                        CameraCharacteristics cc = cm.getCameraCharacteristics(cid);
+                        Integer facing = cc.get(CameraCharacteristics.LENS_FACING);
+                        Boolean hasFlash = cc.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                        if (hasFlash != null && hasFlash
+                                && (facing == null
+                                || facing == CameraCharacteristics.LENS_FACING_BACK)) {
+                            id = cid; break;
+                        }
                     }
+                    if (id == null && cm.getCameraIdList().length > 0) {
+                        id = cm.getCameraIdList()[0];
+                    }
+                } catch (CameraAccessException | IllegalArgumentException e) {
+                    return "No camera available on this device";
                 }
-                if (id == null) id = cm.getCameraIdList()[0];
-                cm.setTorchMode(id, on);
+                if (id == null) return "This device has no camera or flashlight";
+                try {
+                    cm.setTorchMode(id, on);
+                } catch (CameraAccessException | SecurityException e) {
+                    return "Flashlight unavailable right now";
+                }
                 return "Flashlight " + (on ? "on" : "off");
             }
             case "set_wifi": {
@@ -531,6 +656,40 @@ public class MainActivity extends AppCompatActivity {
                         + " · RAM " + o.optString("ramPct") + "% used · Storage "
                         + o.optString("storage");
             }
+            case "rotate": {
+                boolean on = args.optBoolean("on", true);
+                if (Build.VERSION.SDK_INT >= 23 && !Settings.System.canWrite(this)) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                Uri.parse("package:" + getPackageName())));
+                    } catch (Exception ignored) {}
+                    return "Permission needed — please allow 'Modify system settings' for VAYU, then ask again";
+                }
+                Settings.System.putInt(getContentResolver(),
+                        Settings.System.ACCELEROMETER_ROTATION, on ? 1 : 0);
+                return "Auto-rotate turned " + (on ? "on" : "off");
+            }
+            case "dnd": {
+                boolean on = args.optBoolean("on", true);
+                NotificationManager nm = getSystemService(NotificationManager.class);
+                if (Build.VERSION.SDK_INT >= 23 && nm != null) {
+                    if (!nm.isNotificationPolicyAccessGranted()) {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+                        } catch (Exception ignored) {}
+                        return "Permission needed — please allow 'Do Not Disturb access' for VAYU, then ask again";
+                    }
+                    int filter = on
+                            ? NotificationManager.INTERRUPTION_FILTER_PRIORITY
+                            : NotificationManager.INTERRUPTION_FILTER_ALL;
+                    nm.setInterruptionFilter(filter);
+                    return "Do Not Disturb " + (on ? "on" : "off");
+                }
+                try {
+                    startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+                } catch (Exception ignored) {}
+                return "Opened Do Not Disturb settings";
+            }
             case "open_settings": {
                 String page = args.optString("page", "").toLowerCase();
                 Intent i = null;
@@ -558,16 +717,31 @@ public class MainActivity extends AppCompatActivity {
 
     /* ---------------- helpers ---------------- */
     private String findAppPackage(String name) {
-        String lower = name.toLowerCase(Locale.ROOT);
+        String lower = name.toLowerCase(Locale.ROOT).trim();
+        if (lower.isEmpty()) return null;
+        String[] curated = KNOWN_APPS.get(lower);
+        if (curated != null) {
+            for (String pkg : curated) {
+                if (getPackageManager().getLaunchIntentForPackage(pkg) != null) return pkg;
+            }
+        }
         Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> ris = getPackageManager().queryIntentActivities(launcher, 0);
         ResolveInfo best = null;
         int bestScore = 0;
+        String plain = lower.replaceAll("[^a-z0-9]", "");
         for (ResolveInfo ri : ris) {
             String label = ri.loadLabel(getPackageManager()).toString().toLowerCase(Locale.ROOT);
-            if (label.equals(lower)) return ri.activityInfo.packageName;
+            String pkg = ri.activityInfo.packageName;
+            if (label.equals(lower) || pkg.equals(lower)) return ri.activityInfo.packageName;
             if (label.contains(lower) || lower.contains(label)) {
                 int score = Math.min(label.length(), lower.length());
+                if (score > bestScore) { bestScore = score; best = ri; }
+            }
+            String pkgPlain = pkg.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+            if (plain.length() >= 3 && (pkgPlain.contains(plain)
+                    || pkgPlain.endsWith(plain))) {
+                int score = Math.min(pkgPlain.length(), plain.length());
                 if (score > bestScore) { bestScore = score; best = ri; }
             }
         }
@@ -575,11 +749,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String suggestApp(String name) {
-        String lower = name.toLowerCase(Locale.ROOT);
+        String lower = name.toLowerCase(Locale.ROOT).trim();
         String[] common = {
                 "whatsapp", "instagram", "youtube", "settings", "spotify", "camera",
                 "gallery", "photos", "phone", "dialer", "messages", "chrome", "gmail",
-                "maps", "calculator", "clock", "calendar", "files", "notes", "music"
+                "maps", "calculator", "clock", "calendar", "files", "notes", "music",
+                "telegram", "twitter", "facebook", "snapchat", "netflix", "paytm",
+                "phonepe", "gpay", "truecaller", "play store", "hotstar", "zoom", "meet"
         };
         for (String c : common) {
             if (c.contains(lower) || lower.contains(c)) return c;
