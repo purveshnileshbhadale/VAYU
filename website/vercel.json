@@ -12,9 +12,43 @@
           "value": "public, max-age=0, must-revalidate"
         }
       ]
+    },
+    {
+      "source": "/vayu-app/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/vayu-app/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/vayu-app/",
+      "destination": "/vayu-app/index.html"
+    },
+    {
+      "source": "/vayu-app/(.*)",
+      "destination": "/vayu-app/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

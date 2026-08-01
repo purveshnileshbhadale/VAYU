@@ -36,3 +36,23 @@ website/.vercel/
 
 # Logs
 *.log
+
+# MediaPipe model — auto-downloaded at runtime
+hand_landmarker.task
+
+# Local junk / temp files
+.vayu_backups/
+exe_stderr.txt
+exe_stdout.txt
+ngrok.exe
+wbuild_err.txt
+wbuild_out.txt
+web_test_err.txt
+web_test_out.txt
+start_vayu - Shortcut.lnk
+
+# Android build artifacts & local config
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/

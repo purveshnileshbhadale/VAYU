@@ -49,6 +49,7 @@ from actions.wifi_bt_control   import wifi_bt_control
 from actions.power_mgmt        import power_mgmt
 from plugins.loader import load_plugins, plugin_declarations, execute_plugin
 from memory.conversation_db    import init_db, add_entry
+from web.web_control import WebControlServer
 
 
 def get_base_dir():
@@ -835,6 +836,8 @@ class VayuLive:
         self._is_speaking   = False
         self._speaking_lock = threading.Lock()
         self.ui.on_text_command = self._on_text_command
+        self.web = WebControlServer(on_command=self._on_web_command)
+        self.web.start()
 
     def _on_text_command(self, text: str):
         if not self._loop or not self.session:
@@ -847,13 +850,19 @@ class VayuLive:
             self._loop
         )
 
+    def _on_web_command(self, text: str):
+        self.ui.write_log(f"Web: {text}")
+        self._on_text_command(text)
+
     def set_speaking(self, value: bool):
         with self._speaking_lock:
             self._is_speaking = value
         if value:
             self.ui.set_state("SPEAKING")
+            self.web.set_state("SPEAKING")
         elif not self.ui.muted:
             self.ui.set_state("LISTENING")
+            self.web.set_state("LISTENING")
 
     def speak(self, text: str):
         if not self._loop or not self.session:
@@ -1154,12 +1163,14 @@ class VayuLive:
                             full_in = " ".join(in_buf).strip()
                             if full_in:
                                 self.ui.write_log(f"You: {full_in}")
+                                self.web.add_log("user", full_in)
                                 add_entry("user", full_in)
                             in_buf = []
 
                             full_out = " ".join(out_buf).strip()
                             if full_out:
                                 self.ui.write_log(f"Vayu: {full_out}")
+                                self.web.add_log("vayu", full_out)
                                 add_entry("vayu", full_out)
                                 play_listening()
                             out_buf = []
@@ -1220,6 +1231,7 @@ class VayuLive:
             try:
                 print("[VAYU] 🔌 Connecting...")
                 self.ui.set_state("THINKING")
+                self.web.set_state("THINKING")
                 config = self._build_config()
 
                 async with (
@@ -1233,7 +1245,9 @@ class VayuLive:
 
                     print("[VAYU] ✅ Connected.")
                     self.ui.set_state("LISTENING")
+                    self.web.set_state("LISTENING")
                     self.ui.write_log("SYS: VAYU online.")
+                    self.web.add_log("vayu", f"VAYU online — Phone remote at {self.web.url}")
 
                     tg.create_task(self._send_realtime())
                     tg.create_task(self._listen_audio())

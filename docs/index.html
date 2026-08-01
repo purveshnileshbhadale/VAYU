@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VAYU — AI Voice Assistant | Intelligent Desktop Companion</title>
-    <meta name="description" content="VAYU is a cutting-edge AI voice assistant with multi-provider AI, 3D holographic UI, screen vision, plugin system, vector memory, and full computer control. Download for Windows and macOS.">
+    <meta name="description" content="VAYU is a cutting-edge AI voice assistant with multi-provider AI, hand gesture control, live camera feed, Research/Professional modes, 3D holographic UI, screen vision, plugin system, vector memory, and full computer control. Download for Windows and macOS.">
     <meta name="keywords" content="VAYU, AI assistant, voice assistant, Windows, macOS, open source, Gemini, AI desktop companion">
     <meta name="author" content="Purvesh Nilesh Bhadale">
     <meta property="og:title" content="VAYU — AI Voice Assistant">
@@ -1334,8 +1334,9 @@
                 <h1>Meet <span class="gradient-text">VAYU</span><br>Your Desktop AI Companion</h1>
                 <p>
                     A cutting-edge voice assistant that understands natural speech, sees your screen,
-                    controls your computer, and helps you get things done — completely hands-free.
-                    Powered by Gemini, OpenRouter &amp; Groq.
+                    responds to hand gestures, controls your computer, and helps you get things done — 
+                    completely hands-free. Three intelligent modes (Default, Research, Professional)
+                    adapt to your workflow. Powered by Gemini, OpenRouter &amp; Groq.
                 </p>
                 <div class="btn-group">
                     <a href="#download" class="btn btn-primary">
@@ -1386,7 +1387,9 @@
                 <p>
                     VAYU is a next-generation AI voice assistant that runs natively on your desktop.
                     Unlike cloud-only assistants, VAYU integrates directly with your operating system — controlling
-                    applications, managing files, browsing the web, and executing code — all through natural voice commands.
+                    applications, managing files, browsing the web, executing code, and responding to hand gestures — 
+                    all through natural voice, text, or gesture commands. Switch between Default, Research, 
+                    and Professional modes to adapt the AI to your workflow.
                 </p>
                 <p>
                     Built with a modular plugin architecture and multi-provider AI fallback (Gemini &rarr; OpenRouter &rarr; Groq),
@@ -1545,6 +1548,276 @@
                     <span class="tag">Real-time</span>
                 </div>
             </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🎯</div>
+                <h3>Research &amp; Professional Modes</h3>
+                <p>Three intelligent modes: Default (all tools), Research (deep web search, code, vision, file analysis), and Professional (email, calendar, system, productivity). Switch via voice, UI dropdown, or hand gestures.</p>
+                <div class="feature-tags">
+                    <span class="tag">Smart Modes</span>
+                    <span class="tag">Tool Filtering</span>
+                    <span class="tag">Voice Switch</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">✋</div>
+                <h3>Hand Gesture &amp; Cursor Control</h3>
+                <p>14 gestures via webcam: Fist (mute), Open Palm (unmute), Thumbs Up (next mode), Peace (prev mode), Point Up (volume up), Pinch (volume down), Swipe L/R (scroll), Shake (Alt+Tab), OK (Enter), Three (show desktop), Four (task view), Rock On (play/pause). Cursor mode tracks your index finger — pinch to click, peace for right-click. Powered by MediaPipe Hands.</p>
+                <div class="feature-tags">
+                    <span class="tag">MediaPipe</span>
+                    <span class="tag">Cursor Control</span>
+                    <span class="tag">14 Gestures</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">📹</div>
+                <h3>Live Camera Feed</h3>
+                <p>Toggleable camera overlay in the HUD showing real-time webcam feed with hand tracking landmarks drawn. Use it for gesture &amp; cursor control, video calls, or visual context for the AI.</p>
+                <div class="feature-tags">
+                    <span class="tag">Webcam</span>
+                    <span class="tag">Overlay UI</span>
+                    <span class="tag">Live Feed</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">⌨️</div>
+                <h3>OpenCode Integration</h3>
+                <p>VAYU delegates coding tasks to OpenCode — the open-source AI coding agent. Launch OpenCode in a new terminal with a prompt, or open its full TUI. Write, edit, debug, and explore code using OpenCode's capable agent.</p>
+                <div class="feature-tags">
+                    <span class="tag">OpenCode</span>
+                    <span class="tag">Code Agent</span>
+                    <span class="tag">Terminal</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🖥️</div>
+                <h3>Desktop App Experience</h3>
+                <p>Runs as a proper desktop application with no console window. Minimizes to system tray with show/hide/quit/wake word controls. Start minimized on boot with the --minimized flag. Voice activity detection (VAD) gates audio — VAYU only listens when you speak.</p>
+                <div class="feature-tags">
+                    <span class="tag">System Tray</span>
+                    <span class="tag">Wake Word</span>
+                    <span class="tag">Auto-Start</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">🎨</div>
+                <h3>Multi-Theme System</h3>
+                <p>Three handcrafted themes — Cyberpunk (neon glow), Dark (sleek minimal), and Light (clean professional). Switch instantly via voice, settings, or dropdown. Every UI element follows the active theme.</p>
+                <div class="feature-tags">
+                    <span class="tag">Cyberpunk</span>
+                    <span class="tag">Dark Mode</span>
+                    <span class="tag">Live Switch</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">⚙️</div>
+                <h3>Settings &amp; API Manager</h3>
+                <p>Full settings dialog for managing Gemini, OpenRouter, and Groq API keys without editing files. Configure mic, theme, startup behavior, and auto-start — all from a clean UI.</p>
+                <div class="feature-tags">
+                    <span class="tag">API Keys</span>
+                    <span class="tag">Preferences</span>
+                    <span class="tag">No File Editing</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🔁</div>
+                <h3>Seamless Failover</h3>
+                <p>AI provider fallback chain — Gemini &rarr; OpenRouter &rarr; Groq. If one provider is down or rate-limited, VAYU automatically routes to the next without dropping your conversation.</p>
+                <div class="feature-tags">
+                    <span class="tag">Auto-Failover</span>
+                    <span class="tag">No Downtime</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">🌤️</div>
+                <h3>Weather &amp; Environment</h3>
+                <p>Live weather forecasts, system information (CPU, RAM, disk, uptime), time/date queries, and environment reports — all by voice. Stay informed without lifting a finger.</p>
+                <div class="feature-tags">
+                    <span class="tag">Weather</span>
+                    <span class="tag">System Info</span>
+                    <span class="tag">Live Data</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">📋</div>
+                <h3>Clipboard Control</h3>
+                <p>Copy, cut, paste, select all, and clear clipboard entirely by voice. Perfect for hands-free text manipulation during coding, writing, or data entry.</p>
+                <div class="feature-tags">
+                    <span class="tag">Copy/Paste</span>
+                    <span class="tag">Voice Control</span>
+                    <span class="tag">Productivity</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">📱</div>
+                <h3>QR Code Tools</h3>
+                <p>Generate QR codes from any text or URL, and scan QR codes using your webcam. Share links, Wi-Fi credentials, or contact info instantly via voice command.</p>
+                <div class="feature-tags">
+                    <span class="tag">QR Generator</span>
+                    <span class="tag">QR Scanner</span>
+                    <span class="tag">Webcam</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">💻</div>
+                <h3>Code Helper</h3>
+                <p>Explain code, debug errors, optimize performance, generate regex, convert between languages, and review pull requests — all through natural voice. Your pair programmer that never sleeps.</p>
+                <div class="feature-tags">
+                    <span class="tag">Code Explain</span>
+                    <span class="tag">Debug</span>
+                    <span class="tag">Regex Builder</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">💬</div>
+                <h3>Voice Messaging</h3>
+                <p>Send WhatsApp messages, SMS texts, and emails with attachments — completely hands-free. Compose, preview, and send by voice. Perfect while driving or multitasking.</p>
+                <div class="feature-tags">
+                    <span class="tag">WhatsApp</span>
+                    <span class="tag">SMS</span>
+                    <span class="tag">Email</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🎵</div>
+                <h3>Audio &amp; Sound Player</h3>
+                <p>Play music files, system sounds, and audio notifications by voice. Record voice memos, set sound alerts for timers, and control playback volume and skip — no mouse needed.</p>
+                <div class="feature-tags">
+                    <span class="tag">Music</span>
+                    <span class="tag">Voice Memo</span>
+                    <span class="tag">Sound Alerts</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">⏰</div>
+                <h3>Smart Reminders &amp; Timers</h3>
+                <p>Set one-time or recurring reminders with natural language ("remind me every morning at 8 AM"). Countdown timers with alarm sounds. Desktop popup notifications when time's up.</p>
+                <div class="feature-tags">
+                    <span class="tag">Reminders</span>
+                    <span class="tag">Timers</span>
+                    <span class="tag">Notifications</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">▶️</div>
+                <h3>YouTube Voice Control</h3>
+                <p>Search videos, play/pause/skip, adjust volume, and control playback entirely by voice. "Play my liked songs", "search JavaScript tutorial" — VAYU drives your browser.</p>
+                <div class="feature-tags">
+                    <span class="tag">Search</span>
+                    <span class="tag">Playback</span>
+                    <span class="tag">Hands-Free</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🚀</div>
+                <h3>App &amp; Game Launcher</h3>
+                <p>Launch any installed application or game by voice. "Open Chrome", "launch Spotify", "start Cyberpunk 2077". VAYU auto-detects installed software and finds the right executable.</p>
+                <div class="feature-tags">
+                    <span class="tag">App Launcher</span>
+                    <span class="tag">Game Launcher</span>
+                    <span class="tag">Auto-Detect</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">🪟</div>
+                <h3>Window Manager</h3>
+                <p>Arrange, tile, cascade, resize, minimize, maximize, and focus windows by voice. Switch between apps, snap to screen halves, and organize your workspace without touching the mouse.</p>
+                <div class="feature-tags">
+                    <span class="tag">Tile</span>
+                    <span class="tag">Cascade</span>
+                    <span class="tag">Workspace</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">✈️</div>
+                <h3>Flight Tracker</h3>
+                <p>Search flights, check real-time status, find cheap fares, and track delays by voice. Perfect for travel planning — just ask "find flights to Mumbai next Friday".</p>
+                <div class="feature-tags">
+                    <span class="tag">Flight Search</span>
+                    <span class="tag">Status</span>
+                    <span class="tag">Travel</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">📅</div>
+                <h3>Calendar &amp; Events</h3>
+                <p>Add calendar notes, check your daily schedule, set event reminders, and manage your agenda — all by voice. "What's on my calendar today?" VAYU knows.</p>
+                <div class="feature-tags">
+                    <span class="tag">Schedule</span>
+                    <span class="tag">Events</span>
+                    <span class="tag">Agenda</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">📄</div>
+                <h3>Research Paper Creation</h3>
+                <p>Generate well-structured research papers with abstract, introduction, methodology, results, citations, and bibliography. VAYU leverages its AI brain and code agent to research, draft, format, and export papers in multiple formats — all by voice.</p>
+                <div class="feature-tags">
+                    <span class="tag">AI Writing</span>
+                    <span class="tag">Citations</span>
+                    <span class="tag">Export</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">📋</div>
+                <h3>Conversation History</h3>
+                <p>Full searchable history of every conversation with VAYU. Browse past interactions, revisit answers, export logs, and never lose context. Access via UI button or voice command "show history".</p>
+                <div class="feature-tags">
+                    <span class="tag">Searchable</span>
+                    <span class="tag">Exportable</span>
+                    <span class="tag">Persistent</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🚀</div>
+                <h3>First-Run Setup Wizard</h3>
+                <p>Guided setup on first launch — paste your API keys, configure your microphone, pick your theme, and choose auto-start preferences. No manual file editing, no terminal commands needed.</p>
+                <div class="feature-tags">
+                    <span class="tag">Guided</span>
+                    <span class="tag">No Config Files</span>
+                    <span class="tag">One-Time</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">📂</div>
+                <h3>Drag &amp; Drop File Processing</h3>
+                <p>Drop any file directly into VAYU's interface — images, PDFs, Word docs, code files, audio. VAYU instantly reads, analyzes, and responds. No commands needed, just drag and ask.</p>
+                <div class="feature-tags">
+                    <span class="tag">Instant Analysis</span>
+                    <span class="tag">Any Format</span>
+                    <span class="tag">Zero Config</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🪟</div>
+                <h3>One-Click Windows Installer</h3>
+                <p>Professional Inno Setup installer with desktop shortcut, start menu entry, add/remove programs support, and uninstaller. Download the setup executable and VAYU is ready in one click.</p>
+                <div class="feature-tags">
+                    <span class="tag">Inno Setup</span>
+                    <span class="tag">Desktop Shortcut</span>
+                    <span class="tag">Uninstaller</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🎤</div>
+                <h3>Smart Voice Activity Detection</h3>
+                <p>VAYU only listens when you speak — automatic voice activity detection gates the microphone. No push-to-talk, no constant recording. Natural conversation flow with zero latency.</p>
+                <div class="feature-tags">
+                    <span class="tag">VAD</span>
+                    <span class="tag">Auto-Gate</span>
+                    <span class="tag">Low Latency</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d2">
+                <div class="feature-icon">🔊</div>
+                <h3>Multi-Backend TTS Engine</h3>
+                <p>Four text-to-speech backends: edge-tts (natural neural voices), SAPI5 (Windows built-in), Groq AI (fast cloud TTS), and pyttsx3 (offline fallback). Automatically switches based on availability.</p>
+                <div class="feature-tags">
+                    <span class="tag">edge-tts</span>
+                    <span class="tag">SAPI5</span>
+                    <span class="tag">Groq TTS</span>
+                    <span class="tag">pyttsx3</span>
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -1559,7 +1832,7 @@
             <div class="arch-card fade-in">
                 <div class="arch-icon">🎙️</div>
                 <h4>Voice Layer</h4>
-                <p>Audio capture, VAD, multi-backend TTS (edge-tts, SAPI5, Groq, pyttsx3)</p>
+                <p>Audio capture, VAD gating, wake word detection, multi-backend TTS (edge-tts, SAPI5, Groq, pyttsx3)</p>
             </div>
             <div class="arch-card fade-in fade-in-d1">
                 <div class="arch-icon">🧠</div>
@@ -1579,17 +1852,34 @@
             <div class="arch-card fade-in fade-in-d4">
                 <div class="arch-icon">👁️</div>
                 <h4>Vision Module</h4>
-                <p>Screen capture, OCR, webcam, AI image description</p>
+                <p>Screen capture, OCR, webcam, AI image description, hand gesture recognition</p>
             </div>
             <div class="arch-card fade-in fade-in-d5">
                 <div class="arch-icon">💾</div>
                 <h4>Memory Store</h4>
                 <p>TF-IDF vector search over conversations and memories (zero ML deps)</p>
             </div>
+            <div class="arch-card fade-in fade-in-d6">
+                <div class="arch-icon">✋</div>
+                <h4>Gesture Engine</h4>
+                <p>MediaPipe Hands tracking — 14 gestures: fist, palm, thumbs, pinch, swipe, point, shake, ok, three/four fingers, rock on; cursor tracking with pinch/peace click</p>
+            </div>
+            <div class="arch-card fade-in fade-in-d7">
+                <div class="arch-icon">🎯</div>
+                <h4>Smart Modes</h4>
+                <p>Default, Research, Professional — tool filtering, custom prompts, context-aware</p>
+            </div>
+            <div class="arch-card fade-in fade-in-d8">
+                <div class="arch-icon">🖥️</div>
+                <h4>System Tray &amp; Wake Word</h4>
+                <p>Close-to-tray, proper icon, tray menu (show/hide/quit/wake word toggle), VAD-gated audio streaming, --minimized flag for auto-start</p>
+            </div>
         </div>
 
         <div class="arch-flow fade-in">
             <span class="arch-flow-step active">🎤 Voice Input</span>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <span class="arch-flow-step active">✋ Gesture Input</span>
             <span class="arch-flow-arrow">&rarr;</span>
             <span class="arch-flow-step active">🧠 AI Brain</span>
             <span class="arch-flow-arrow">&rarr;</span>
@@ -1657,6 +1947,10 @@
                 <div class="tech-name">PyPDF2</div>
                 <div class="tech-use">PDF Processing</div>
             </div>
+            <div class="tech-item fade-in">
+                <div class="tech-name">MediaPipe</div>
+                <div class="tech-use">Hand Gesture Tracking</div>
+            </div>
         </div>
     </div>
 </section>
@@ -1682,8 +1976,8 @@
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    Download for Windows
-                    <span class="size-badge">~15 MB</span>
+                    Download Source Code
+                    <span class="size-badge">~6 MB</span>
                 </a>
 
                 <div class="download-deps">
@@ -1698,7 +1992,7 @@
                             <div class="step-num">1</div>
                             <div class="step-content">
                                 <strong>Download &amp; Extract</strong>
-                                <p>Click the <strong>"Download for Windows"</strong> button above, then extract the ZIP anywhere on your PC.</p>
+                                <p>Click the <strong>"Download Source Code"</strong> button above, then extract the ZIP anywhere on your PC.</p>
                             </div>
                         </div>
                         <div class="step">
@@ -1747,7 +2041,7 @@
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
                     Download for macOS
-                    <span class="size-badge">~15 MB</span>
+                    <span class="size-badge">~6 MB</span>
                 </a>
                 <div class="download-deps">
                     <h4>Dependencies</h4>
@@ -1786,6 +2080,10 @@
                         </span>
                         <span class="dep-item optional">
                             opencv-python
+                            <span class="dep-tag opt">opt</span>
+                        </span>
+                        <span class="dep-item optional">
+                            mediapipe
                             <span class="dep-tag opt">opt</span>
                         </span>
                         <span class="dep-item optional">
@@ -1832,35 +2130,57 @@
                                 <p style="font-size:0.85rem;margin-top:0.3rem;">If you get a security warning, right-click the file and select <strong>Open</strong>.</p>
                             </div>
                         </div>
-                                    <div class="terminal-body">
-                                        <span class="terminal-prompt">$</span> pip install -r requirements.txt
-                                    </div>
-                                </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Android -->
+            <div class="download-card fade-in">
+                <div class="download-os-icon">📱</div>
+                <h3>Android</h3>
+                <p class="os-desc">Native APK for Android 7+ — hologram UI, voice, camera &amp; device control</p>
+                <a href="downloads/VAYU-v1.1.0.apk" class="download-btn mac">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download APK
+                    <span class="size-badge">~3 MB</span>
+                </a>
+                <div class="download-deps">
+                    <h4>Features</h4>
+                    <div class="dep-list">
+                        <span class="dep-item required">Hologram UI<span class="dep-tag req">new</span></span>
+                        <span class="dep-item required">Groq-powered chat<span class="dep-tag req">new</span></span>
+                        <span class="dep-item required">Voice in / TTS out<span class="dep-tag req">new</span></span>
+                        <span class="dep-item required">Camera vision<span class="dep-tag req">new</span></span>
+                        <span class="dep-item required">Device control<span class="dep-tag req">new</span></span>
+                        <span class="dep-item required">Wake word<span class="dep-tag req">new</span></span>
+                        <span class="dep-item required">History &amp; memory<span class="dep-tag req">new</span></span>
+                        <span class="dep-item optional">Web App (PWA)<span class="dep-tag opt">alt</span></span>
+                    </div>
+                    <div class="setup-steps">
+                        <h4 class="steps-title">Setup Steps</h4>
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <strong>Install &amp; Open</strong>
+                                <p>Download the APK, tap it, and allow installation from unknown sources. Open the VAYU app.</p>
                             </div>
                         </div>
                         <div class="step">
-                            <div class="step-num">5</div>
+                            <div class="step-num">2</div>
                             <div class="step-content">
-                                <strong>Run VAYU</strong>
-                                <p>Double-click <strong><code>VAYU.command</code></strong> in the extracted folder &rarr; Terminal opens and VAYU starts automatically.</p>
-                                <div class="terminal-box" style="margin-top:0.5rem;">
-                                    <div class="terminal-header">
-                                        <span class="terminal-dot" style="background:#ff5f57;"></span>
-                                        <span class="terminal-dot" style="background:#febc2e;"></span>
-                                        <span class="terminal-dot" style="background:#28c840;"></span>
-                                        <span class="terminal-title">Or via Terminal</span>
-                                    </div>
-                                    <div class="terminal-body">
-                                        <span class="terminal-prompt">$</span> python main.py
-                                    </div>
-                                </div>
+                                <strong>Enter Groq Key</strong>
+                                <p>VAYU runs <strong>only on Groq</strong>. Get a free key at <code style="color:var(--accent-light);">console.groq.com/keys</code> and paste it on first launch. Your key stays on your device.</p>
                             </div>
                         </div>
                         <div class="step">
-                            <div class="step-num">6</div>
+                            <div class="step-num">3</div>
                             <div class="step-content">
-                                <strong>Enter API Keys in the UI</strong>
-                                <p>On first launch, VAYU shows a <strong>Settings</strong> dialog. Paste your Gemini, OpenRouter, and Groq API keys there &rarr; click <strong>Save</strong>. No manual file editing needed.</p>
+                                <strong>Talk &amp; Control</strong>
+                                <p>Tap the mic, type, or say "VAYU" to wake. Ask it to open apps, set alarms, timers, SMS, calls, flashlight, volume — it controls your phone.</p>
                             </div>
                         </div>
                     </div>

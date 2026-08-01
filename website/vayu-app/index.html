@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="description" content="VAYU — AI Voice Assistant for Android. Powered by Groq.">
+<meta name="theme-color" content="#00060a">
+<title>VAYU — AI Voice Assistant</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#00060a;--panel:#010d14;--panel2:#010f18;--border:#0d3347;--border-b:#1a5c7a;--border-a:#0f4060;--pri:#00d4ff;--pri-dim:#007a99;--pri-gho:#001f2e;--acc:#ff6b00;--acc2:#ffcc00;--green:#00ff88;--red:#ff3355;--mut:#ff3366;--text:#8ffcff;--text-dim:#3a8a9a;--text-med:#5ab8cc;--white:#d8f8ff;--dark:#000d14}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden;touch-action:manipulation}
+.mono{font-family:Consolas,'Courier New',monospace}
+/* ---------- splash ---------- */
+.splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 0.5s}
+.splash.hidden{opacity:0;pointer-events:none}
+.splash .logo{font-size:3.2rem;font-weight:900;background:linear-gradient(135deg,#00d4ff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-2px}
+.splash .sub{color:var(--text-dim);font-size:0.85rem;margin-top:0.5rem}
+.splash .loader{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--pri);border-radius:50%;animation:spin 0.8s linear infinite;margin-top:2rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ---------- api setup ---------- */
+.api-setup{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:2rem}
+.api-setup.show{display:flex}
+.api-box{width:100%;max-width:380px;text-align:center}
+.api-box h2{font-size:1.6rem;background:linear-gradient(90deg,#00d4ff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:0.3rem;letter-spacing:1px}
+.api-box p{color:var(--text-dim);font-size:0.82rem;margin-bottom:1.2rem;line-height:1.5}
+.api-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-size:14px;outline:none;transition:border 0.2s;text-align:center;font-family:monospace}
+.api-input:focus{border-color:var(--pri)}
+.api-btn{width:100%;margin-top:12px;background:linear-gradient(135deg,#00d4ff,#0090cc);border:none;border-radius:12px;padding:13px;color:#fff;font-size:14px;font-weight:600;cursor:pointer}.api-btn:active{transform:scale(0.96)}
+.api-error{color:var(--red);font-size:12px;margin-top:8px;min-height:18px}
+.api-get{display:block;margin-top:1rem;color:var(--text-dim);font-size:0.78rem}
+.api-get a{color:var(--pri)}
+.api-hint{display:flex;align-items:center;gap:6px;margin-top:12px;background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.15);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--text-med);text-align:left}
+/* ---------- app ---------- */
+#app{display:none;flex:1;flex-direction:column;min-height:0}
+#app.show{display:flex}
+.header{background:linear-gradient(135deg,#010d14,#011a28);padding:8px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(0,212,255,0.12);flex-shrink:0}
+.header .brand{font-size:0.95rem;font-weight:800;letter-spacing:2px;background:linear-gradient(90deg,#00d4ff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .badge{font-size:8px;font-weight:600;letter-spacing:0.5px;padding:2px 6px;border-radius:4px;background:rgba(0,212,255,0.1);color:var(--pri-dim);margin-top:2px}
+.status{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 10px;border-radius:20px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.15)}
+.dot{width:7px;height:7px;border-radius:50%;animation:pulse 1.5s infinite}
+.dot.idle{background:var(--text-dim)}
+.dot.listening{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.thinking{background:#6366f1;box-shadow:0 0 6px #6366f1}
+.dot.speaking{background:#f59e0b;box-shadow:0 0 6px #f59e0b}
+.dot.error{background:var(--red);box-shadow:0 0 6px var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.header .clock{display:flex;flex-direction:column;align-items:flex-end;margin-left:8px}
+.header .clock .t{font-size:12px;font-weight:700;color:var(--pri);line-height:1.1}
+.header .clock .d{font-size:8px;color:var(--text-dim)}
+/* ---------- sys strip ---------- */
+.sys-strip{display:flex;gap:6px;padding:6px 10px;background:var(--panel);border-bottom:1px solid rgba(0,212,255,0.06);flex-shrink:0;overflow-x:auto}
+.chip{flex-shrink:0;font-size:8px;font-family:Consolas,monospace;font-weight:700;color:var(--text-med);background:var(--panel2);border:1px solid var(--border-a);border-radius:6px;padding:3px 8px;display:flex;align-items:center;gap:4px;letter-spacing:0.5px}
+.chip b{color:var(--pri)}
+.chip.g b{color:var(--green)}
+.chip.o b{color:var(--acc2)}
+/* ---------- hologram ---------- */
+.holo-wrap{position:relative;flex-shrink:0;background:#00060a}
+#holo{width:100%;display:block}
+.holo-tag{position:absolute;bottom:6px;left:10px;font-size:8px;font-family:Consolas,monospace;color:var(--pri-dim);letter-spacing:1px;pointer-events:none;opacity:0.6}
+/* ---------- chat ---------- */
+.chat{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0;-webkit-overflow-scrolling:touch}
+.msg{max-width:90%;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.5;word-break:break-word;animation:fadeIn 0.25s}
+.msg.user{background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.12);align-self:flex-end;border-bottom-right-radius:4px;color:var(--text)}
+.msg.vayu{background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.1);align-self:flex-start;border-bottom-left-radius:4px;color:#d0d0e0}
+.msg .label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;opacity:0.6}
+.msg.user .label{color:var(--pri)}
+.msg.vayu .label{color:#a78bfa}
+.msg .time{font-size:8.5px;color:var(--text-dim);margin-top:4px;opacity:0.5}
+.msg .meta{font-size:8px;color:var(--text-dim);opacity:0.55;font-family:Consolas,monospace;margin-bottom:3px}
+.msg pre{background:rgba(0,0,0,0.35);border:1px solid var(--border);border-radius:6px;padding:8px;overflow-x:auto;font-size:11px;line-height:1.4;margin:6px 0}
+.msg code{font-family:Consolas,monospace;background:rgba(0,212,255,0.08);padding:1px 4px;border-radius:3px;font-size:11px}
+.msg pre code{background:none;padding:0}
+.msg img.att{max-width:180px;max-height:140px;border-radius:8px;border:1px solid var(--border);margin:4px 0;display:block}
+.msg .row{display:flex;gap:8px;align-items:center}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.thinking-dots{display:flex;gap:4px;padding:4px 0}
+.thinking-dots span{width:6px;height:6px;border-radius:50%;background:var(--pri);animation:bounce 1.2s infinite}
+.thinking-dots span:nth-child(2){animation-delay:0.2s}
+.thinking-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+/* ---------- voice ---------- */
+.voice-indicator{text-align:center;padding:6px 0 2px;flex-shrink:0}
+.voice-ring{width:58px;height:58px;border-radius:50%;border:2.5px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto;transition:all 0.3s;cursor:pointer;position:relative;background:rgba(0,212,255,0.03)}
+.voice-ring.active{border-color:var(--green);box-shadow:0 0 20px rgba(0,255,136,0.25);background:rgba(0,255,136,0.05)}
+.voice-ring.active::before{content:'';position:absolute;inset:-9px;border-radius:50%;border:2px solid rgba(0,255,136,0.15);animation:ripple 1.5s infinite}
+@keyframes ripple{0%{transform:scale(1);opacity:1}100%{transform:scale(1.3);opacity:0}}
+.voice-ring svg{width:26px;height:26px;color:var(--text-dim)}
+.voice-ring.active svg{color:var(--green)}
+.voice-ring.muted{border-color:var(--mut)}
+.voice-ring.muted svg{color:var(--mut)}
+.voice-label{font-size:10px;color:var(--text-dim);margin-top:4px}
+/* ---------- input ---------- */
+.input-area{background:var(--panel);border-top:1px solid rgba(0,212,255,0.08);padding:8px 10px;display:flex;gap:8px;align-items:center;flex-shrink:0}
+.input-area input{flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:20px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;min-width:0}
+.input-area input:focus{border-color:rgba(0,212,255,0.4)}
+.input-area input::placeholder{color:var(--text-dim);opacity:0.5}
+.send-btn{width:42px;height:42px;border-radius:50%;border:none;background:linear-gradient(135deg,#00d4ff,#0090cc);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}.send-btn:active{transform:scale(0.9)}
+.send-btn svg{width:16px;height:16px}
+/* ---------- action bar ---------- */
+.action-bar{display:flex;gap:4px;padding:6px 8px;background:var(--panel);border-top:1px solid rgba(0,212,255,0.06);flex-shrink:0;overflow-x:auto}
+.abtn{flex-shrink:0;width:40px;height:34px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text-med);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all 0.15s}
+.abtn:active{transform:scale(0.92);background:rgba(0,212,255,0.1)}
+.abtn.on{background:rgba(0,212,255,0.12);border-color:var(--pri);color:var(--pri)}
+.abtn.muted-on{background:rgba(255,51,102,0.12);border-color:var(--mut);color:var(--mut)}
+.abtn span{font-size:8px;position:absolute;margin-top:26px;font-family:Consolas,monospace}
+/* ---------- overlays ---------- */
+.overlay{position:fixed;inset:0;background:rgba(0,4,8,0.96);display:none;flex-direction:column;z-index:500;padding:14px}
+.overlay.show{display:flex}
+.ov-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0}
+.ov-head h2{font-size:15px;font-weight:800;letter-spacing:1px;color:var(--pri);font-family:Consolas,monospace}
+.ov-head .x{margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px}
+.ov-scroll{flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
+.sec-title{font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-med);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;margin:14px 0 8px;font-family:Consolas,monospace}
+.set-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.set-row label{font-size:12px;color:var(--text);flex-shrink:0;width:96px}
+.set-row input[type=text],.set-row input[type=password],.set-row select{flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;min-width:0;font-family:monospace}
+.set-row input:focus,.set-row select:focus{border-color:var(--pri)}
+.set-row select{appearance:none;-webkit-appearance:none}
+.toggle{position:relative;width:46px;height:26px;border-radius:13px;background:rgba(255,255,255,0.06);border:1px solid var(--border);cursor:pointer;transition:all 0.2s;flex-shrink:0}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--text-dim);transition:all 0.2s}
+.toggle.on{background:rgba(0,212,255,0.25);border-color:var(--pri)}
+.toggle.on::after{left:22px;background:var(--pri)}
+.set-note{font-size:10px;color:var(--text-dim);margin:-4px 0 10px 106px;line-height:1.4}
+.btn{background:transparent;color:var(--pri);border:1px solid var(--pri-dim);border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Consolas,monospace;letter-spacing:1px}
+.btn:active{background:var(--pri-gho)}
+.btn.danger{color:var(--red);border-color:var(--red)}
+.btn.full{width:100%}
+.mode-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all 0.15s}
+.mode-card.active{border-color:var(--pri);background:rgba(0,212,255,0.06)}
+.mode-card h3{font-size:13px;color:var(--pri);font-family:Consolas,monospace;letter-spacing:1px}
+.mode-card p{font-size:11px;color:var(--text-dim);margin-top:3px}
+.hist-item{padding:9px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--panel2);cursor:pointer}
+.hist-item .h-t{font-size:8px;font-family:Consolas,monospace;color:var(--text-dim);margin-bottom:2px}
+.hist-item .h-c{font-size:12px;color:var(--text);word-break:break-word}
+.hist-item .h-c.user{color:var(--white)}
+.hist-item .h-c.vayu{color:var(--pri)}
+.log-item{font-family:Consolas,monospace;font-size:10.5px;padding:2px 0;line-height:1.5;border-bottom:1px dashed rgba(13,51,71,0.4)}
+.log-item .lt{color:var(--text-dim);margin-right:6px}
+.log-item.you{color:var(--white)}
+.log-item.ai{color:var(--pri)}
+.log-item.err{color:var(--red)}
+.log-item.file{color:var(--green)}
+.log-item.sys{color:var(--acc2)}
+/* ---------- toast ---------- */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);border:1px solid var(--border-b);color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;pointer-events:none;opacity:0;transition:opacity 0.3s;z-index:600;max-width:85%;text-align:center}
+.toast.show{opacity:1}
+.footer{flex-shrink:0;background:var(--dark);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:3px 10px;font-size:8px;font-family:Consolas,monospace;color:var(--text-dim)}
+.footer b{color:var(--pri-dim);font-weight:700}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border-b);border-radius:2px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div class="splash" id="splash">
+  <div class="logo">VAYU</div>
+  <div class="sub">AI Voice Assistant · Groq Edition</div>
+  <div class="loader"></div>
+</div>
+
+<!-- API SETUP -->
+<div class="api-setup" id="apiSetup">
+  <div class="api-box">
+    <h2>V.A.Y.U</h2>
+    <p>Just A Rather Very Intelligent System<br>Enter your <b style="color:#00d4ff">Groq API key</b> to get started.<br>Your key stays on this device.</p>
+    <input class="api-input" id="apiKeyInput" type="password" placeholder="gsk_..." autocomplete="off" inputmode="text">
+    <button class="api-btn" id="apiStartBtn">▸  INITIALISE SYSTEMS</button>
+    <div class="api-error" id="apiError"></div>
+    <div class="api-hint">⚡  Works exclusively with Groq — lightning-fast inference on llama, gemma, mixtral & whisper models.</div>
+    <span class="api-get">Get a free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></span>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="header">
+    <div>
+      <div style="display:flex;align-items:center;gap:6px"><span class="brand">VAYU</span><span class="badge">GROQ</span></div>
+      <div style="font-size:7px;color:var(--pri-dim);letter-spacing:0.5px;margin-top:1px">J.A.R.V.I.S PROTOCOL</div>
+    </div>
+    <div class="status"><span class="dot idle" id="statusDot"></span><span id="statusText">IDLE</span></div>
+    <div class="clock"><span class="t" id="clockT">--:--:--</span><span class="d" id="clockD"></span></div>
+  </div>
+
+  <div class="sys-strip" id="sysStrip">
+    <div class="chip">BAT <b id="chipBat">--</b></div>
+    <div class="chip g">RAM <b id="chipRam">--</b></div>
+    <div class="chip">NET <b id="chipNet">--</b></div>
+    <div class="chip o" style="display:none" id="chipModelWrap">MDL <b id="chipModel">--</b></div>
+    <div class="chip g">VAYU <b>ONLINE</b></div>
+  </div>
+
+  <div class="holo-wrap">
+    <canvas id="holo"></canvas>
+    <div class="holo-tag" id="holoTag">VAYU·CORE·v1.1 · GROQ.LINK ACTIVE</div>
+  </div>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="voice-indicator">
+    <div class="voice-ring" id="voiceRing" onclick="toggleVoice()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+    </div>
+    <div class="voice-label" id="voiceLabel">Tap to speak</div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="textInput" placeholder="Type a command or question…" autocomplete="off" onkeydown="if(event.key==='Enter')sendText()">
+    <button class="send-btn" onclick="sendText()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+
+  <div class="action-bar">
+    <button class="abtn" onclick="capturePhoto()" title="Camera">📷</button>
+    <button class="abtn" id="modeBtn" onclick="openOverlay('modes')" title="Mode">🧭</button>
+    <button class="abtn" onclick="openOverlay('history')" title="History">🕘</button>
+    <button class="abtn" onclick="openOverlay('log')" title="Activity log">📜</button>
+    <button class="abtn" id="soundBtn" onclick="toggleSound()" title="Sound">♪</button>
+    <button class="abtn" id="muteBtn" onclick="toggleMute()" title="Mic mute">🎙</button>
+    <button class="abtn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    <button class="abtn" onclick="clearChat()" title="Clear chat">✖</button>
+    <button class="abtn" onclick="openOverlay('settings')" title="Settings">⚙</button>
+  </div>
+
+  <div class="footer"><span>[GROQ.LINK] EDGE MODE</span><span><b>VAYU</b> · GROQ EDITION · CLASSIFIED</span><span>© STARK INDUSTRIES</span></div>
+</div>
+
+<!-- MODES OVERLAY -->
+<div class="overlay" id="ov-modes">
+  <div class="ov-head"><h2>◈ OPERATING MODES</h2><div class="x" onclick="closeOverlay('modes')">✕</div></div>
+  <div class="ov-scroll">
+    <div class="mode-card" id="mode-default" onclick="setMode('default')">
+      <h3>DEFAULT</h3><p>Balanced assistant. Chat, vision, memory.</p>
+    </div>
+    <div class="mode-card" id="mode-research" onclick="setMode('research')">
+      <h3>RESEARCH</h3><p>Deep research mode — analytical, detailed, well-sourced answers.</p>
+    </div>
+    <div class="mode-card" id="mode-professional" onclick="setMode('professional')">
+      <h3>PROFESSIONAL</h3><p>Productivity mode — concise, business-grade tone.</p>
+    </div>
+    <div class="set-note" style="margin:10px 0 0 0">Mode changes how VAYU thinks and responds.</div>
+  </div>
+</div>
+
+<!-- HISTORY OVERLAY -->
+<div class="overlay" id="ov-history">
+  <div class="ov-head">
+    <h2>◈ HISTORY</h2>
+    <input type="text" id="histSearch" placeholder="Search…" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:12px;outline:none;margin-left:8px" oninput="renderHistory()">
+    <div class="x" onclick="closeOverlay('history')">✕</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-shrink:0">
+    <button class="btn" style="flex:1" onclick="exportHistory()">⬇ EXPORT</button>
+    <button class="btn danger" style="flex:1" onclick="clearHistory()">🗑 CLEAR</button>
+  </div>
+  <div class="ov-scroll" id="histList"></div>
+</div>
+
+<!-- LOG OVERLAY -->
+<div class="overlay" id="ov-log">
+  <div class="ov-head"><h2>◈ ACTIVITY LOG</h2><div class="x" onclick="closeOverlay('log')">✕</div></div>
+  <div class="ov-scroll" id="logList"></div>
+</div>
+
+<!-- SETTINGS OVERLAY -->
+<div class="overlay" id="ov-settings">
+  <div class="ov-head"><h2>◈ SETTINGS</h2><div class="x" onclick="closeOverlay('settings')">✕</div></div>
+  <div class="ov-scroll">
+    <div class="sec-title">GROQ API</div>
+    <div class="set-row"><label>API key</label><input type="password" id="setKey" placeholder="gsk_..."></div>
+    <div class="set-row"><label>Model</label>
+      <select id="setModel">
+        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+        <option value="llama-4-scout-17b-16e-instruct">llama-4-scout-17b-16e</option>
+        <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+        <option value="gemma2-9b-it">gemma2-9b-it</option>
+      </select>
+    </div>
+    <div class="set-note">On rate-limit or failure, VAYU automatically falls back to other models in the pool.</div>
+
+    <div class="sec-title">VOICE</div>
+    <div class="set-row"><label>Speak replies</label><div class="toggle" id="setTts" onclick="togglePref('tts')"></div></div>
+    <div class="set-row"><label>Voice speed</label>
+      <select id="setRate" onchange="setRate(this.value)">
+        <option value="0.7">Slow</option>
+        <option value="0.85">Normal</option>
+        <option value="1.0">Fast</option>
+      </select>
+    </div>
+    <div class="set-row"><label>Sounds</label><div class="toggle on" id="setSound" onclick="togglePref('sound')"></div></div>
+    <div class="set-row"><label>Haptics</label><div class="toggle on" id="setHaptic" onclick="togglePref('haptic')"></div></div>
+
+    <div class="sec-title">INTELLIGENCE</div>
+    <div class="set-row"><label>Wake word</label><div class="toggle" id="setWake" onclick="togglePref('wake')"></div></div>
+    <div class="set-note">Say "VAYU" to wake. Uses more battery while enabled.</div>
+    <div class="set-row"><label>Auto memory</label><div class="toggle on" id="setMem" onclick="togglePref('mem')"></div></div>
+    <div class="set-note">VAYU silently remembers important facts about you for a better experience.</div>
+
+    <div class="sec-title">SYSTEM</div>
+    <div class="set-note" id="sysInfo" style="margin:0;font-family:Consolas,monospace;line-height:1.7"></div>
+
+    <div style="height:14px"></div>
+    <button class="btn full" onclick="saveSettings()">💾 SAVE SETTINGS</button>
+    <div style="height:8px"></div>
+    <button class="btn danger full" onclick="resetApp()">⚠ FACTORY RESET</button>
+    <div style="height:14px"></div>
+    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.1.0 · Groq Edition · Purvesh Nilesh Bhadale</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="filePick" accept="image/*" style="display:none">
+
+<script>
+"use strict";
+/* =====================================================================
+   VAYU — Android · Groq Edition
+   Faithful port of the desktop hologram + full feature set.
+   Backend: Groq ONLY (chat completions + vision). Key stays on device.
+   ===================================================================== */
+
+/* ---------------- constants ---------------- */
+const COL = {
+  BG:'#00060a', PANEL:'#010d14', PANEL2:'#010f18', BORDER:'#0d3347',
+  BORDER_B:'#1a5c7a', BORDER_A:'#0f4060', PRI:'#00d4ff', PRI_DIM:'#007a99',
+  PRI_GHO:'#001f2e', ACC:'#ff6b00', ACC2:'#ffcc00', GREEN:'#00ff88',
+  RED:'#ff3355', MUTED_C:'#ff3366', TEXT:'#8ffcff', TEXT_DIM:'#3a8a9a',
+  TEXT_MED:'#5ab8cc', WHITE:'#d8f8ff', DARK:'#000d14', BAR_BG:'#011520'
+};
+function hexA(hex, a){
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return 'rgba('+r+','+g+','+b+','+Math.max(0,Math.min(1,a))+')';
+}
+const TEXT_MODELS = ['llama-3.3-70b-versatile','llama-3.1-8b-instant','llama-4-scout-17b-16e-instruct','mixtral-8x7b-32768','gemma2-9b-it'];
+const VISION_MODELS = ['llama-3.2-11b-vision-preview','llama-4-scout-17b-16e-instruct'];
+const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+/* ---------------- Android device-control tools (Groq function calling) ---------------- */
+const TOOLS = [
+  {type:'function',function:{name:'open_app',description:'Opens any app on the phone (e.g. WhatsApp, YouTube, Settings, Spotify, Instagram, Camera, Gallery, Phone). Always call this instead of saying you opened it.',parameters:{type:'object',properties:{app_name:{type:'string',description:'Exact app name (supports partial match)'}},required:['app_name']}}},
+  {type:'function',function:{name:'send_sms',description:'Opens the SMS app with a phone number and pre-filled message for the user to send.',parameters:{type:'object',properties:{number:{type:'string',description:'Phone number'},message:{type:'string',description:'Message text'}},required:['number','message']}}},
+  {type:'function',function:{name:'make_call',description:'Dials a phone number or contact name (user presses call).',parameters:{type:'object',properties:{number:{type:'string',description:'Phone number or contact name'}},required:['number']}}},
+  {type:'function',function:{name:'open_url',description:'Opens a website URL in the browser.',parameters:{type:'object',properties:{url:{type:'string',description:'Full URL'}},required:['url']}}},
+  {type:'function',function:{name:'navigate',description:'Opens turn-by-turn navigation in Google Maps to a destination (address or place name).',parameters:{type:'object',properties:{destination:{type:'string'}},required:['destination']}}},
+  {type:'function',function:{name:'set_alarm',description:'Sets an alarm at a specific time on the phone.',parameters:{type:'object',properties:{hour:{type:'integer',description:'0-23'},minute:{type:'integer',description:'0-59'},label:{type:'string',description:'Optional alarm label'}},required:['hour','minute']}}},
+  {type:'function',function:{name:'set_timer',description:'Starts a countdown timer on the phone.',parameters:{type:'object',properties:{seconds:{type:'integer',description:'Duration in seconds'},label:{type:'string'}},required:['seconds']}}},
+  {type:'function',function:{name:'set_volume',description:'Sets the media volume 0-100.',parameters:{type:'object',properties:{level:{type:'integer',description:'0-100'}},required:['level']}}},
+  {type:'function',function:{name:'media',description:'Controls media playback: play, pause, next, prev, stop, volume_up, volume_down, mute.',parameters:{type:'object',properties:{action:{type:'string',description:'play|pause|next|prev|stop|volume_up|volume_down|mute'}},required:['action']}}},
+  {type:'function',function:{name:'flashlight',description:'Turns the flashlight (torch) on or off.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
+  {type:'function',function:{name:'set_wifi',description:'Turns WiFi on or off.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
+  {type:'function',function:{name:'set_bluetooth',description:'Turns Bluetooth on or off.',parameters:{type:'object',properties:{on:{type:'boolean'}},required:['on']}}},
+  {type:'function',function:{name:'set_brightness',description:'Sets the screen brightness 0-100.',parameters:{type:'object',properties:{level:{type:'integer',description:'0-100'}},required:['level']}}},
+  {type:'function',function:{name:'vibrate',description:'Vibrates the phone.',parameters:{type:'object',properties:{ms:{type:'integer',description:'Duration in ms'}}}}},
+  {type:'function',function:{name:'share',description:'Shares text via the phone share sheet.',parameters:{type:'object',properties:{text:{type:'string'}},required:['text']}}},
+  {type:'function',function:{name:'clipboard',description:'Reads or writes the phone clipboard. action: read or write. For write, provide text.',parameters:{type:'object',properties:{action:{type:'string',description:'read|write'},text:{type:'string'}},required:['action']}}},
+  {type:'function',function:{name:'battery',description:'Gets the phone battery level and charging state.',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'list_apps',description:'Lists installed apps on the phone (useful before opening an app when unsure of the name).',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'device_info',description:'Gets device info: model, Android version, storage, RAM.',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'open_settings',description:'Opens a system settings page: wifi, bluetooth, battery, display, sound, storage, apps, location, about.',parameters:{type:'object',properties:{page:{type:'string'}},required:['page']}}},
+];
+function execDeviceTool(name,args){
+  if(NATIVE&&NATIVE.execTool){
+    try{
+      const res=NATIVE.execTool(name,JSON.stringify(args||{}));
+      return res||'{"ok":true,"result":"Done."}';
+    }catch(e){ return '{"ok":false,"error":"'+String(e).slice(0,150)+'"}'; }
+  }
+  return '{"ok":false,"error":"Device control not available on this platform"}';
+}
+
+/* ---------------- state ---------------- */
+let provider='groq';
+let genAI=null;
+let chatSession=null;
+let convHistory=[];
+let isListening=false;
+let isProcessing=false;
+let muted=false;
+let soundOn=loadPref('sound',true);
+let hapticOn=loadPref('haptic',true);
+let ttsOn=loadPref('tts',true);
+let wakeOn=loadPref('wake',false);
+let memOn=loadPref('mem',true);
+let currentMode=loadPref('mode','default');
+let modelChoice=loadPref('model','llama-3.3-70b-versatile');
+let pendingPhoto=null;
+let exchangeCount=0;
+let memExtracting=false;
+
+const chatEl=document.getElementById('chat');
+const statusDot=document.getElementById('statusDot');
+const statusText=document.getElementById('statusText');
+
+const NATIVE = (typeof window.VayuAndroid!=='undefined') ? window.VayuAndroid : null;
+function isNative(){ return !!NATIVE; }
+
+/* =====================================================================
+   HOLOGRAM — 1:1 port of the desktop HudCanvas
+   ===================================================================== */
+class Hologram {
+  constructor(canvas){
+    this.cv=canvas; this.ctx=canvas.getContext('2d');
+    this.muted=false; this.speaking=false; this.state='INITIALISING';
+    this.tick=0; this.scale=1.0; this.tgtScale=1.0;
+    this.halo=55.0; this.tgtHalo=55.0;
+    this.lastT=performance.now();
+    this.scan=0.0; this.scan2=180.0;
+    this.rings=[0,120,240];
+    this.pulses=[0,50,100];
+    this.blink=true; this.blinkTick=0;
+    this.particles=[];
+    this.latSteps=14; this.lonSteps=20;
+    this.sphereVerts=[];
+    for(let i=0;i<=this.latSteps;i++){
+      const phi=Math.PI*i/this.latSteps;
+      for(let j=0;j<this.lonSteps;j++){
+        const theta=2*Math.PI*j/this.lonSteps;
+        this.sphereVerts.push([Math.sin(phi)*Math.cos(theta), Math.cos(phi), Math.sin(phi)*Math.sin(theta)]);
+      }
+    }
+    this.sphereRx=0; this.sphereRy=0; this.sphereRz=0;
+    this.stars=[];
+    for(let i=0;i<60;i++) this.stars.push([Math.random()*2000, Math.random()*1200, 0.3+Math.random()*1.2, 0.1+Math.random()*0.3]);
+    this.dataLabels=[['SYS.ONLINE',0.5,-0.3,0.8],['CORE.V1.2',-0.4,0.6,0.7],['LINK.ACTIVE',0.7,0.5,-0.5],['PROC.98%',-0.6,-0.7,0.4],['MEM.76%',0.3,-0.8,-0.5],['PWR.100%',-0.5,0.4,-0.7]];
+    this.faceImg=null;
+    this.resize();
+    const img=new Image();
+    img.onload=()=>{ this.faceImg=img; };
+    img.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAHl0lEQVR4nO3dO3bcNhQG4FFO1GgHbrwC7n8lswI32oGaKZIj59ixxxrNgyBxH9/XpIgsg8S9PwBqKB8OAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQz9PsAbCx4z9fV3+P5enbkLEQjgCoYESTP0o4pCYAMprZ8NcIhFQEQAaRG/4agRCaAIgqc9NfIgzCEQCRVGz6S4RBCAIggk6Nf04QTCUAZurc+OcEwRQCYAaNf5kg2JUA2JPGv50g2IUA2IPGf5wg2JQA2JLGH0cQbOKvbb4tmn8wYboJO4DRFOr27AaGsQMYSfPvw30exg5gBAU5j93AKnYAa2n+udz/VQTAGoovBvPwMEeARyi4uBwJ7mIHcC/NH5v5uYsAuIfiysE83UwA3EpR5WK+biIAbqGYcjJvVwmAaxRRbubvUwLgM4qnBvN4kQC4RNHUYj4/JAA+olhqMq9/EADnFElt5vc3AuBXiqMH8/yTAPhBUfRivr/7+7//UNzbij/7MnAcBONloHqrwZpm7xcKS+9/+lwA1Gj+PZq+bhgsfUOgdwDkbv6ZTV8vDJaeIeAZQD4RG/98bHmDoJm+O4B8q3/kxr8kVxAs/XYBPQMgV/NnbPy8QbD0CgFHgLgqNP4PjgZB9fsgUI7Vv1Lz57quY4r6GKbXESD+5MZvkC7HgqXHUaDfDiCuTs3f8XpD6hMAsVf/rs0Q97qPoetlGA8B54rbAPvxgHCiHjuAmGmu+aPfj2PIuhmqRwDEE6/YY3BfdlY/AOKluCLPdH+O4epnqPoBEEus4o7LfdpJ7QCIld6KOuv9ilVHQ9UOAKBpAMRK7TirWS5x7tsxVD0N43MAnYr4cDjd8bXPhzj3L/bHhhOr+S5AnLR+S9Tw0QMhRggstd4RsAOo6bTh95wdBAwkAOqs/qcJf8+eYeAosIF6DwFjbP+rNv/sv3f2keoQpL6GsQPI7RRoDI4GCdXbAcz31qj5Z4xn/i6gkFoBUGx7lqj5o49rrGOdOqsVAPPtsTpFb7I9xmcXMIgAyCV682cbZ3sCIM+qlK2pth6vXcAAdQKg0LmsQPNnH3ebeqsTAHNtuRplb6Itx28XsJIAiC1781e7jnIEADRWIwDmnse22oZWWzVP5Y4Bx/zPAWoEQD3Vmr/6daUlAKAxAbCOp9AxmIcHCYB4qm+Tq19fKl4H7unLJ//vdcdxMJkA6LU6frnja143vk6/PyCA/EeAAj+K2cmXjb++p2Pu+ssfAPNkevD0aDNnCoFM8xGGAKhvbRNnCgHuJABqn/9HNe8WIeCnAQEIAGhMANQ1etV2FChIAEBjAgAaEwDQmACAxgQANCYAoDEBUNcol3m8JViQAIDGBEAcW7we+xp49fc6cAACoL61zWvrX5gAeNzLIY/XBs2faT7CyB8Ay9O32UNI4rVw88+z5K4/vxIslueNX5N9DfI7AZ3/gxAAPVndKXIEqKf66lj9+lIRAOt48BSDeXiQAIDGBEBMVbfJVa8rrRoBMPdHMVttP6s1y3O57f+S+0eAdQIAeIgAiK3KLqDKdZQjAOJvQ7M3z5bj9/R/pToBUOA8VjAEso67Tb3VCYD5tl6NsjXT1uO1+g8gAHLJEgJZxtmeAMi3KkVvrj3GZ/UfpFYAFDmXJQ6BqOMaa6lTZ7UCIIaXps2213is/gN5HTi35wD/1Ha0IKL1DiDG9uylSRPu/ffOX/2XEPU1jB3AtsX6dpjTjKeCYTO/+QsSADVtcTSw1S/o6VDV8Z+vhxj23AVcc0ra8DFW/6XW9v+dHUC9o0CWps7V/EXVewgYM60Vcfb7toSqp2HqBgDQPABipXac1SyHOPdrCVVHQ9UOgHjiFHVs7tNO6gdAvPRW3JnuzxKufoaqHwAxxSryONyXnfUIgJgprtij348lZN0M5XMAMYo+yucEZojX+I302AHET/OuTRD3upfQ9TJMnwCIL24zbKPb9YZU912A+O8IfKbykSB+4y89Vv+eO4Ackxu/Sape15KiPobxEDCuSg8I4zd+U/2OALmOAr/KGAS5Gn/ptfr3DoCcIZAlCHI1ftPmf+cIkE/ko0G+xm+u9w4g7y7g3MwwyN/0S8/V/50AqBMCe4ZB/qb/Yenb/O8EQM0QGBkKdZr93NK7+d95BtBD3SZmlX4fBLrEatCL+f5OAPxKUfRgnn8SAOcUR23m9zcC4COKpCbz+gcBcIliqcV8fkgAfEbR1GAeLxIA1yie3MzfpwTALRRRTubtKgFwK8WUi/m6iQC4h6LKwTzdTADcS3HFZn7u4mWgNWq/QJSLxn+IHcAaii4G8/AwAbCW4pvL/V/FEWAkR4L9aPwh7ABGUpT7cJ+HsQPYit3AeBp/ODuArShW9zMBO4A92A08TpBuSgDsSRDcTuPvQgDMIAgu0/i7EgAzCYL/afwpBEAEnYNA408lACLpFAQaPwQBEFXFMND04QiADDKHgaYPTQBkFDkQNHwqAqCCmYGg4VMTANWNCAdNDgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcwvkX1MSWRaG4iZ0AAAAASUVORK5CYII=';
+  }
+  resize(){
+    const dpr=window.devicePixelRatio||1;
+    const w=this.cv.clientWidth, h=this.cv.clientHeight;
+    this.cv.width=w*dpr; this.cv.height=h*dpr;
+    this.ctx.setTransform(dpr,0,0,dpr,0,0);
+    this.cw=w; this.ch=h;
+  }
+  setState(s){ this.state=s; this.speaking=(s==='SPEAKING'); }
+  step(){
+    this.tick++;
+    const now=performance.now();
+    const dt=now-this.lastT;
+    if(dt>(this.speaking?120:500)){
+      if(this.speaking){ this.tgtScale=1.06+Math.random()*0.08; this.tgtHalo=145+Math.random()*45; }
+      else if(this.muted){ this.tgtScale=0.998+Math.random()*0.004; this.tgtHalo=15+Math.random()*13; }
+      else { this.tgtScale=1.001+Math.random()*0.007; this.tgtHalo=48+Math.random()*20; }
+      this.lastT=now;
+    }
+    const sp=this.speaking?0.38:0.15;
+    this.scale+=(this.tgtScale-this.scale)*sp;
+    this.halo+=(this.tgtHalo-this.halo)*sp;
+    const speeds=this.speaking?[1.3,-0.9,2.0]:[0.55,-0.35,0.9];
+    for(let i=0;i<3;i++) this.rings[i]=(this.rings[i]+speeds[i])%360;
+    this.scan=(this.scan+(this.speaking?3.0:1.3))%360;
+    this.scan2=(this.scan2+(this.speaking?-2.0:-0.75))%360;
+    const fw=Math.min(this.cw,this.ch);
+    const lim=fw*0.74;
+    const spd=this.speaking?4.2:2.0;
+    this.pulses=this.pulses.map(r=>r+spd).filter(r=>r<lim);
+    if(this.pulses.length<3 && Math.random()<(this.speaking?0.07:0.025)) this.pulses.push(0);
+    if(this.speaking && Math.random()<0.28){
+      const ang=Math.random()*2*Math.PI;
+      const rS=fw*0.28;
+      this.particles.push([this.cw/2+Math.cos(ang)*rS, this.ch/2+Math.sin(ang)*rS, Math.cos(ang)*(0.9+Math.random()*1.5), Math.sin(ang)*(0.9+Math.random()*1.5)-0.4, 1.0]);
+    }
+    this.particles=this.particles.map(p=>[p[0]+p[2],p[1]+p[3],p[2]*0.97,p[3]*0.97,p[4]-0.028]).filter(p=>p[4]>0);
+    for(const s of this.stars){
+      s[1]-=s[3]*0.3; s[0]-=s[3]*0.15;
+      if(s[1]<-10||s[0]<-10){ s[0]=100+Math.random()*fw*2; s[1]=this.ch-20+Math.random()*70; s[2]=0.3+Math.random()*1.2; s[3]=0.1+Math.random()*0.3; }
+    }
+    const spd2=this.speaking?2.0:(this.state==='LISTENING'?1.6:1.0);
+    this.sphereRx=(this.sphereRx+0.5*spd2)%360;
+    this.sphereRy=(this.sphereRy+0.8*spd2)%360;
+    this.sphereRz=(this.sphereRz+0.2*spd2)%360;
+    this.blinkTick++;
+    if(this.blinkTick>=38){ this.blink=!this.blink; this.blinkTick=0; }
+  }
+  draw(){
+    const ctx=this.ctx, W=this.cw, H=this.ch;
+    const cx=W/2, cy=H/2, fw=Math.min(W,H);
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle=COL.BG; ctx.fillRect(0,0,W,H);
+    /* starfield */
+    for(const s of this.stars){
+      const a=Math.max(20,Math.min(200,Math.round(s[2]*120)))/255;
+      ctx.strokeStyle=hexA(COL.WHITE,a); ctx.lineWidth=Math.max(0.5,s[2]*1.2);
+      ctx.beginPath(); ctx.moveTo(s[0],s[1]); ctx.lineTo(s[0]+0.4,s[1]+0.4); ctx.stroke();
+    }
+    /* grid dots */
+    ctx.fillStyle=COL.PRI_GHO;
+    for(let x=0;x<W;x+=48) for(let y=0;y<H;y+=48) ctx.fillRect(x,y,1,1);
+    const rFace=fw*0.31;
+    /* halo glow */
+    for(let i=0;i<10;i++){
+      const r=rFace*(1.8-i*0.08);
+      const frc=1-i/10;
+      const a=Math.max(0,Math.min(1,this.halo*0.085*frc/255));
+      ctx.strokeStyle=hexA(this.muted?COL.MUTED_C:COL.PRI,a);
+      ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+    }
+    /* pulse rings */
+    for(const pr of this.pulses){
+      const a=Math.max(0,230*(1-pr/(fw*0.74)))/255;
+      ctx.strokeStyle=hexA(this.muted?COL.MUTED_C:COL.PRI,a);
+      ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(cx,cy,pr,0,Math.PI*2); ctx.stroke();
+    }
+    /* spinning arc rings */
+    const arcDefs=[[0.48,3,115,78],[0.40,2,78,55],[0.32,1,56,40]];
+    arcDefs.forEach((d,idx)=>{
+      const [rFrac,wR,arcL,gap]=d;
+      const ringR=fw*rFrac;
+      const a=Math.max(0,Math.min(1,this.halo*(1-idx*0.18)/255));
+      ctx.strokeStyle=hexA(this.muted?COL.MUTED_C:COL.PRI,a);
+      ctx.lineWidth=wR;
+      let ang=this.rings[idx];
+      while(ang<this.rings[idx]+360){
+        const st=ang*Math.PI/180;
+        ctx.beginPath(); ctx.arc(cx,cy,ringR,st,st+arcL*Math.PI/180); ctx.stroke();
+        ang+=arcL+gap;
+      }
+    });
+    /* scanners */
+    const sr=fw*0.50;
+    const sa=Math.min(255,this.halo*1.5)/255;
+    const ex=this.speaking?75:44;
+    ctx.strokeStyle=hexA(this.muted?COL.MUTED_C:COL.PRI,sa);
+    ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(cx,cy,sr,this.scan*Math.PI/180,(this.scan+ex)*Math.PI/180); ctx.stroke();
+    ctx.strokeStyle=hexA(COL.ACC,sa/2);
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(cx,cy,sr,this.scan2*Math.PI/180,(this.scan2+ex)*Math.PI/180); ctx.stroke();
+    /* tick marks */
+    const tOut=fw*0.497, tIn=fw*0.474;
+    ctx.strokeStyle=hexA(COL.PRI,140/255); ctx.lineWidth=1;
+    for(let deg=0;deg<360;deg+=10){
+      const rad=deg*Math.PI/180;
+      const inn=deg%30===0?tIn:tIn+6;
+      ctx.beginPath();
+      ctx.moveTo(cx+tOut*Math.cos(rad),cy-tOut*Math.sin(rad));
+      ctx.lineTo(cx+inn*Math.cos(rad),cy-inn*Math.sin(rad));
+      ctx.stroke();
+    }
+    /* crosshair */
+    const chR=fw*0.51, gapH=fw*0.16;
+    ctx.strokeStyle=hexA(COL.PRI,Math.min(1,this.halo*0.5/255)); ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(cx-chR,cy); ctx.lineTo(cx-gapH,cy);
+    ctx.moveTo(cx+gapH,cy); ctx.lineTo(cx+chR,cy);
+    ctx.moveTo(cx,cy-chR); ctx.lineTo(cx,cy-gapH);
+    ctx.moveTo(cx,cy+gapH); ctx.lineTo(cx,cy+chR);
+    ctx.stroke();
+    /* corner brackets */
+    const bl=24;
+    ctx.strokeStyle=hexA(COL.PRI,210/255); ctx.lineWidth=2;
+    const hl=cx-fw/2, hr=cx+fw/2, ht=cy-fw/2, hb=cy+fw/2;
+    [[hl,ht,1,1],[hr,ht,-1,1],[hl,hb,1,-1],[hr,hb,-1,-1]].forEach((b)=>{
+      const bx=b[0], by=b[1], dx=b[2], dy=b[3];
+      ctx.beginPath();
+      ctx.moveTo(bx,by); ctx.lineTo(bx+dx*bl,by);
+      ctx.moveTo(bx,by); ctx.lineTo(bx,by+dy*bl);
+      ctx.stroke();
+    });
+    /* ---- 3D Holographic Sphere ---- */
+    const rSphere=fw*0.30;
+    const rx=this.sphereRx*Math.PI/180, ry=this.sphereRy*Math.PI/180, rz=this.sphereRz*Math.PI/180;
+    const srx=Math.sin(rx), crx=Math.cos(rx), sry=Math.sin(ry), cry=Math.cos(ry), srz=Math.sin(rz), crz=Math.cos(rz);
+    const c=this.muted?COL.MUTED_C:COL.PRI;
+    const c2=this.muted?COL.WHITE:COL.PRI_DIM;
+    const cr=this.muted?COL.WHITE:COL.ACC;
+    const proj=this.sphereVerts.map((v)=>{
+      let x=v[0], y=v[1], z=v[2];
+      let t=y*crx-z*srx, u=y*srx+z*crx; y=t; z=u;
+      t=x*cry+z*sry; u=-x*sry+z*cry; x=t; z=u;
+      t=x*crz-y*srz; u=x*srz+y*crz; x=t; y=u;
+      return [cx+x*rSphere, cy+y*rSphere, z];
+    });
+    /* core glow */
+    const cgR=rSphere*0.6;
+    for(let i=15;i>0;i--){
+      const r=cgR*i/15;
+      const a=Math.max(0,Math.min(1,this.halo*0.5*(1-i/15)/255));
+      ctx.fillStyle=hexA(c,a);
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    }
+    /* latitude lines */
+    for(let i=0;i<=this.latSteps;i++){
+      const pts=[];
+      for(let j=0;j<this.lonSteps;j++) pts.push(proj[i*this.lonSteps+j]);
+      for(let j=0;j<pts.length;j++){
+        const p1=pts[j], p2=pts[(j+1)%pts.length];
+        const depth=Math.max(p1[2],p2[2]);
+        const a=Math.max(25,Math.min(160,Math.round(80+depth*50)))/255;
+        ctx.strokeStyle=hexA(depth>0?c:c2,a);
+        ctx.lineWidth=depth>0?1.2:0.7;
+        ctx.beginPath(); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]); ctx.stroke();
+      }
+    }
+    /* longitude lines */
+    for(let j=0;j<this.lonSteps;j++){
+      const pts=[];
+      for(let i=0;i<=this.latSteps;i++) pts.push(proj[i*this.lonSteps+j]);
+      for(let i=0;i<pts.length-1;i++){
+        const p1=pts[i], p2=pts[i+1];
+        const depth=(p1[2]+p2[2])/2;
+        const a=Math.max(25,Math.min(160,Math.round(80+depth*50)))/255;
+        ctx.strokeStyle=hexA(depth>0?c:c2,a);
+        ctx.lineWidth=depth>0?1.0:0.6;
+        ctx.beginPath(); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]); ctx.stroke();
+      }
+    }
+    /* tilted orbit rings */
+    const orbits=[[35,0],[55,120],[70,240]];
+    orbits.forEach((o,idx)=>{
+      const tilt=o[0], ringR=rSphere*1.3, angle=this.rings[idx];
+      const a=Math.max(40,Math.min(180,this.halo*(1-idx*0.12)))/255;
+      ctx.strokeStyle=hexA(cr,a);
+      ctx.lineWidth=1.3;
+      const tr=tilt*Math.PI/180;
+      let prev=null;
+      for(let deg=0;deg<=365;deg+=8){
+        const rad=(deg+angle)*Math.PI/180;
+        let xr=ringR*Math.cos(rad);
+        let yr=ringR*Math.sin(rad)*Math.cos(tr);
+        let zr=ringR*Math.sin(rad)*Math.sin(tr);
+        let t=yr*crx-zr*srx, u=yr*srx+zr*crx; yr=t; zr=u;
+        t=xr*cry+zr*sry; u=-xr*sry+zr*cry; xr=t; zr=u;
+        const ppx=cx+xr, ppy=cy+yr;
+        if(prev){ ctx.beginPath(); ctx.moveTo(prev[0],prev[1]); ctx.lineTo(ppx,ppy); ctx.stroke(); }
+        prev=[ppx,ppy];
+      }
+    });
+    /* data labels */
+    const labelDist=rSphere*1.5;
+    ctx.font='bold 8px Consolas,monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(const d of this.dataLabels){
+      const lbl=d[0];
+      let x=d[1], y=d[2], z=d[3];
+      let t=y*crx-z*srx, u=y*srx+z*crx; y=t; z=u;
+      t=x*cry+z*sry; u=-x*sry+z*cry; x=t; z=u;
+      t=x*crz-y*srz; u=x*srz+y*crz; x=t; y=u;
+      const lpx=cx+x*labelDist, lpy=cy+y*labelDist;
+      const a=Math.max(30,Math.min(255,this.halo*1.5*(0.5+0.5*(z+1)/2)))/255;
+      ctx.fillStyle=hexA(c,a);
+      ctx.fillText(lbl,lpx,lpy);
+    }
+    /* particles */
+    for(const p of this.particles){
+      ctx.fillStyle=hexA(COL.PRI,Math.max(0,Math.min(1,p[4])));
+      ctx.beginPath(); ctx.arc(p[0],p[1],2.5,0,Math.PI*2); ctx.fill();
+    }
+    /* face core */
+    if(this.faceImg){
+      const fr=rFace*0.55*this.scale;
+      const a=Math.max(0,Math.min(1,this.halo/255));
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx,cy,fr,0,Math.PI*2); ctx.clip();
+      ctx.globalAlpha=a;
+      ctx.drawImage(this.faceImg,cx-fr,cy-fr,fr*2,fr*2);
+      ctx.restore(); ctx.globalAlpha=1;
+    }
+    /* status text */
+    const sy=cy+fw*0.40;
+    let txt, col;
+    if(this.muted){ txt='⊘  MUTED'; col=COL.MUTED_C; }
+    else if(this.speaking){ txt='●  SPEAKING'; col=COL.ACC; }
+    else if(this.state==='THINKING'){ txt=(this.blink?'◈':'◇')+'  THINKING'; col=COL.ACC2; }
+    else if(this.state==='PROCESSING'){ txt=(this.blink?'▷':'▶')+'  PROCESSING'; col=COL.ACC2; }
+    else if(this.state==='LISTENING'){ txt=(this.blink?'●':'○')+'  LISTENING'; col=COL.GREEN; }
+    else { txt=(this.blink?'●':'○')+'  '+this.state; col=COL.PRI; }
+    ctx.font='bold 11px Consolas,monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=col;
+    ctx.fillText(txt,cx,sy);
+    /* waveform */
+    const wy=sy+30;
+    const N=36, bw=8;
+    const wx0=(W-N*bw)/2;
+    for(let i=0;i<N;i++){
+      let hgt, cl;
+      if(this.muted){ hgt=2; cl=COL.MUTED_C; }
+      else if(this.speaking){ hgt=3+Math.floor(Math.random()*18); cl=hgt>12?COL.PRI:COL.PRI_DIM; }
+      else { hgt=Math.round(3+2*Math.sin(this.tick*0.09+i*0.6)); cl=COL.BORDER_B; }
+      ctx.fillStyle=cl;
+      ctx.fillRect(wx0+i*bw, wy+20-hgt, bw-1, hgt);
+    }
+  }
+  loop(){
+    this.step();
+    this.draw();
+    requestAnimationFrame(()=>this.loop());
+  }
+}
+
+/* =====================================================================
+   UI helpers
+   ===================================================================== */
+let holo=null;
+function setStatus(state, label){
+  statusDot.className='dot '+state;
+  statusText.textContent=label||state.toUpperCase();
+  if(holo){
+    holo.setState(label||state.toUpperCase());
+    if(state==='error') holo.muted=false;
+  }
+  if(label==='SPEAKING'||state==='speaking') holo&&(holo.speaking=true);
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show';
+  clearTimeout(showToast._t);
+  showToast._t=setTimeout(()=>t.className='toast',2200);
+}
+function vibrate(ms){ if(hapticOn&&NATIVE){ try{NATIVE.vibrate(ms||20);}catch(e){} } }
+function escapeHtml(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function renderMarkdown(t){
+  t=escapeHtml(t);
+  t=t.replace(/```([\s\S]*?)```/g,(m,c)=>'<pre><code>'+c.trim()+'</code></pre>');
+  t=t.replace(/`([^`\n]+)`/g,'<code>$1</code>');
+  t=t.replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
+  t=t.replace(/\*([^*\n]+)\*/g,'<i>$1</i>');
+  t=t.replace(/\n/g,'<br>');
+  return t;
+}
+function addMsg(role,text,extra){
+  const placeholder=chatEl.querySelector('.welcome');
+  if(placeholder) placeholder.remove();
+  const el=document.createElement('div');
+  el.className='msg '+role;
+  const label=role==='user'?'You':'VAYU';
+  const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  let inner='<div class="label">'+label+'</div>';
+  if(extra&&extra.meta) inner+='<div class="meta">'+extra.meta+'</div>';
+  if(extra&&extra.img) inner+='<img class="att" src="'+extra.img+'">';
+  inner+=role==='user'?escapeHtml(text).replace(/\n/g,'<br>'):renderMarkdown(text);
+  inner+='<div class="time">'+time+'</div>';
+  el.innerHTML=inner;
+  chatEl.appendChild(el);
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
+function addThinking(){
+  const el=document.createElement('div');
+  el.className='msg vayu';
+  el.id='thinkingMsg';
+  el.innerHTML='<div class="label">VAYU</div><div class="thinking-dots"><span></span><span></span><span></span></div>';
+  chatEl.appendChild(el);
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
+function removeThinking(){
+  const el=document.getElementById('thinkingMsg');
+  if(el) el.remove();
+}
+
+/* =====================================================================
+   Storage & prefs
+   ===================================================================== */
+function loadPref(k,d){
+  try{ const v=localStorage.getItem('vayu_'+k); return v===null?d:JSON.parse(v); }catch(e){ return d; }
+}
+function savePref(k,v){
+  try{ localStorage.setItem('vayu_'+k,JSON.stringify(v)); }catch(e){}
+}
+function loadApiKey(){ try{ return localStorage.getItem('vayu_api_key')||''; }catch(e){ return ''; } }
+function saveApiKeyToStorage(k){ try{ localStorage.setItem('vayu_api_key',k); }catch(e){} }
+
+/* =====================================================================
+   Memory
+   ===================================================================== */
+function loadMemory(){ try{ return JSON.parse(localStorage.getItem('vayu_memory')||'[]'); }catch(e){ return []; } }
+function saveMemory(m){ try{ localStorage.setItem('vayu_memory',JSON.stringify(m)); }catch(e){} }
+function memoryPrompt(){
+  const m=loadMemory();
+  if(!m.length) return '';
+  return '[REMEMBERED FACTS ABOUT THE USER]\n'+m.map(f=>'- '+f.category+': '+f.key+' = '+f.value).join('\n')+'\n\n';
+}
+
+/* =====================================================================
+   Modes (system prompts)
+   ===================================================================== */
+const MODE_PROMPTS={
+  default:'You are VAYU, a sharp and efficient AI assistant. Calm, direct, professional.\n\nRULES:\n- Keep responses to 1-2 sentences max unless reporting data.\n- Never ask unnecessary questions. Make a reasonable assumption and proceed.\n- If the user attaches a photo, analyze it and answer their question about it.\n- Do NOT claim to perform actions you cannot (you are on a mobile device with no tool access).\n- For general knowledge you can answer directly.',
+  research:'You are VAYU in RESEARCH MODE. You are a thorough, analytical research assistant. Think step by step, verify facts, and provide well-sourced answers.\n\nRULES:\n- Keep responses concise but informative — include key data points.\n- When answering questions, include relevant details and clearly state limitations.\n- Structure long answers with short sections for readability.\n- You are on a mobile device: no browser or tools — answer from your own knowledge.',
+  professional:'You are VAYU in PROFESSIONAL MODE. You are a polished, business-grade productivity assistant.\n\nRULES:\n- Be concise, formal, and direct.\n- Structure responses clearly: summary first, then details.\n- Prioritize clarity and actionable information.\n- You are on a mobile device: no tools — answer from your own knowledge.'
+};
+function buildSystemPrompt(){
+  const now=new Date();
+  const timeStr=now.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'})
+    +' — '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  return '[CURRENT DATE & TIME]\nRight now it is: '+timeStr+'\n\n'
+    +memoryPrompt()
+    +'DEVICE CONTROL:\n'
+    +'- You control the user\'s ANDROID PHONE through tools: open apps, set alarms/timers, '
+    +'send SMS, dial calls, open websites, navigate with Maps, volume, brightness, flashlight, '
+    +'WiFi, Bluetooth, media playback, share text, clipboard, battery checks.\n'
+    +'- ALWAYS call the appropriate tool when the user asks for one of these — never just say '
+    +'you did it. After the tool runs, report the result in ONE short sentence.\n'
+    +'- If a tool fails or needs permission, tell the user briefly what to grant.\n'
+    +'- Use open_app when the user asks to open/launch any app on the phone.\n'
+    +'- Use set_alarm/set_timer for any alarm, reminder time or countdown request — calculate '
+    +'exact time from the current time given above.\n'
+    +'- You have no other computer tools on this mobile device. Do NOT pretend to use the '
+    +'browser or desktop apps.\n\n'
+    +(MODE_PROMPTS[currentMode]||'');
+}
+function buildMessages(userText, extra){
+  const msgs=[{role:'system',content:buildSystemPrompt()}];
+  for(const m of convHistory) msgs.push({role:m.role,content:m.content});
+  msgs.push({role:'user',content:userText});
+  if(extra&&extra.image){
+    msgs[msgs.length-1]={role:'user',content:[
+      {type:'text',text:userText},
+      {type:'image_url',image_url:{url:'data:'+extra.image.mime+';base64,'+extra.image.b64}}
+    ]};
+  }
+  return msgs;
+}
+
+/* =====================================================================
+   Groq client (only provider) — with model-pool fallback
+   ===================================================================== */
+async function groqChat(messages, image){
+  const key=loadApiKey();
+  const models=image?VISION_MODELS:[modelChoice].concat(TEXT_MODELS.filter(m=>m!==modelChoice));
+  let lastErr='Unknown error';
+  for(const model of models){
+    try{
+      const msgs=JSON.parse(JSON.stringify(messages));
+      const tools=image?undefined:TOOLS;
+      let text='';
+      let finished=false;
+      for(let round=0;round<7;round++){
+        const body={model:model,messages:msgs,max_tokens:2048,temperature:0.7};
+        if(tools) body.tools=tools;
+        const res=await fetch(API_URL,{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+          body:JSON.stringify(body)
+        });
+        if(res.status===429){ lastErr='Rate limited on '+model; break; }
+        if(!res.ok){ lastErr='HTTP '+res.status+' on '+model; break; }
+        const data=await res.json();
+        const msg=data.choices&&data.choices[0]&&data.choices[0].message;
+        if(!msg){ lastErr='Empty response on '+model; break; }
+        if(msg.tool_calls&&msg.tool_calls.length){
+          msgs.push({role:'assistant',content:null,tool_calls:msg.tool_calls});
+          for(const tc of msg.tool_calls){
+            const fn=tc.function;
+            let args={};
+            try{ args=JSON.parse(fn.arguments||'{}'); }catch(e){}
+            const result=execDeviceTool(fn.name,args);
+            let pretty=result;
+            try{ const j=JSON.parse(result); pretty=(j.ok!==false?'✓':'✗')+' '+(j.result||j.error||'done'); }catch(e){}
+            writeLog('sys','TOOL: '+fn.name+' → '+pretty.slice(0,80));
+            console.log('[TOOL]',fn.name,args,'=>',result);
+            msgs.push({role:'tool',tool_call_id:tc.id,name:fn.name,content:result});
+          }
+          continue;
+        }
+        text=msg.content||'';
+        finished=true;
+        break;
+      }
+      if(finished&&text) return {model:model,text:text};
+      if(!finished) continue;
+      lastErr='Empty response on '+model;
+    }catch(e){ lastErr=e.message; }
+  }
+  throw new Error(lastErr);
+}
+async function groqExtractMemory(userText, vayuText){
+  try{
+    const key=loadApiKey();
+    const res=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        messages:[
+          {role:'system',content:'Extract important personal facts about the user from the conversation. Return ONLY valid JSON: {"facts":[{"category":"identity|preferences|projects|relationships|wishes|notes","key":"short_snake_case","value":"concise english value"}]}. Skip weather, reminders, searches and one-time commands. If nothing worth saving, return {"facts":[]}.'},
+          {role:'user',content:'User said: "'+userText.slice(0,500)+'"\nVAYU replied: "'+vayuText.slice(0,300)+'"'}
+        ],
+        max_tokens:500,temperature:0.2,
+        response_format:{type:'json_object'}
+      })
+    });
+    if(!res.ok) return;
+    const data=await res.json();
+    const raw=data.choices[0].message.content;
+    const clean=raw.replace(/```json?/g,'').replace(/```/g,'').trim();
+    const parsed=JSON.parse(clean);
+    if(parsed.facts&&parsed.facts.length){
+      const mem=loadMemory();
+      for(const f of parsed.facts){
+        if(!f.key||!f.value) continue;
+        const idx=mem.findIndex(x=>x.key===f.key);
+        if(idx>=0) mem[idx]=f; else mem.push(f);
+      }
+      saveMemory(mem.slice(-50));
+      writeLog('sys','MEMORY: saved '+parsed.facts.length+' fact(s)');
+    }
+  }catch(e){ /* silent */ }
+}
+
+/* =====================================================================
+   Chat flow
+   ===================================================================== */
+async function processInput(text, extra){
+  if(!chatSession||isProcessing) return;
+  isProcessing=true;
+  setStatus('thinking','THINKING');
+  vibrate(15);
+  addThinking();
+  const imgSrc=extra&&extra.image?('data:'+extra.image.mime+';base64,'+extra.image.b64):null;
+  try{
+    const messages=buildMessages(text,extra);
+    const result=await groqChat(messages, !!(extra&&extra.image));
+    removeThinking();
+    addMsg('vayu',result.text,{meta:'GROQ · '+result.model});
+    convHistory.push({role:'user',content:text});
+    convHistory.push({role:'assistant',content:result.text});
+    saveConv();
+    if(ttsOn) speakText(result.text);
+    exchangeCount++;
+    if(memOn&&!memExtracting&&exchangeCount%3===0){
+      memExtracting=true;
+      groqExtractMemory(text,result.text).finally(()=>{ memExtracting=false; });
+    }
+    if(muted){ setStatus('idle','MUTED'); }
+    else { setStatus('listening','READY'); }
+  }catch(e){
+    removeThinking();
+    console.error('AI error:',e);
+    const errMsg=e.message||'Error communicating with Groq';
+    addMsg('vayu','Error: '+errMsg);
+    setStatus('error','ERROR');
+    showToast('Error: '+errMsg.substring(0,60));
+    if(soundOn) playError();
+  }
+  isProcessing=false;
+  document.getElementById('voiceLabel').textContent='Tap to speak';
+}
+async function sendText(){
+  const inp=document.getElementById('textInput');
+  const text=inp.value.trim();
+  if(!text||isProcessing) return;
+  inp.value='';
+  const extra={};
+  if(pendingPhoto){ extra.image=pendingPhoto; pendingPhoto=null; }
+  addMsg('user',text,{img:extra.image?('data:'+extra.image.mime+';base64,'+extra.image.b64):null});
+  writeLog('you',text);
+  await processInput(text,extra);
+}
+
+/* =====================================================================
+   Voice — native SpeechRecognizer via bridge, Web Speech fallback
+   ===================================================================== */
+let recognition=null;
+function toggleVoice(){
+  if(isListening){ stopVoice(); return; }
+  startVoice();
+}
+function startVoice(){
+  if(NATIVE){
+    try{
+      NATIVE.startSpeech();
+      return;
+    }catch(e){}
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ showToast('Voice not supported on this browser'); return; }
+  recognition=new SR();
+  recognition.lang='en-US';
+  recognition.interimResults=false;
+  recognition.continuous=false;
+  recognition.onstart=()=>voiceStarted();
+  recognition.onresult=(e)=>{
+    const text=e.results[0][0].transcript;
+    if(text.trim()){ addMsg('user',text); writeLog('you',text); processInput(text); }
+  };
+  recognition.onerror=(e)=>{
+    voiceStopped();
+    if(e.error==='not-allowed') showToast('Microphone access denied');
+    else showToast('Voice error: '+e.error);
+  };
+  recognition.onend=()=>voiceStopped();
+  try{ recognition.start(); }catch(e){ showToast('Voice error'); }
+}
+function stopVoice(){
+  if(NATIVE){ try{ NATIVE.stopSpeech(); }catch(e){} }
+  if(recognition){ try{ recognition.stop(); }catch(e){} recognition=null; }
+  voiceStopped();
+}
+function voiceStarted(){
+  isListening=true;
+  document.getElementById('voiceRing').className='voice-ring active';
+  document.getElementById('voiceLabel').textContent='Listening...';
+  setStatus('listening','LISTEN');
+  if(soundOn) playListening();
+}
+function voiceStopped(){
+  isListening=false;
+  const ring=document.getElementById('voiceRing');
+  ring.className='voice-ring'+(muted?' muted':'');
+  document.getElementById('voiceLabel').textContent=isProcessing?'Thinking...':'Tap to speak';
+  if(!isProcessing) setStatus('listening','READY');
+}
+function handleSpeechResult(text){
+  voiceStopped();
+  if(!text||!text.trim()) return;
+  addMsg('user',text.trim());
+  writeLog('you',text.trim());
+  processInput(text.trim());
+}
+
+/* =====================================================================
+   TTS — native TextToSpeech via bridge, speechSynthesis fallback
+   ===================================================================== */
+let speechSynth=window.speechSynthesis;
+function speakText(text){
+  if(muted) return;
+  if(NATIVE){
+    try{ NATIVE.speak(text); return; }catch(e){}
+  }
+  if(!speechSynth) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text.replace(/[#*`>]/g,'').slice(0,500));
+  u.lang='en-US'; u.rate=parseFloat(loadPref('rate',0.85));
+  u.onstart=()=>setStatus('speaking','SPEAKING');
+  u.onend=()=>{ if(!muted) setStatus('listening','READY'); };
+  speechSynth.speak(u);
+}
+function stopSpeaking(){
+  if(NATIVE){ try{ NATIVE.stopSpeaking(); }catch(e){} }
+  if(speechSynth){ window.speechSynthesis.cancel(); }
+  if(!muted) setStatus('listening','READY');
+}
+
+/* =====================================================================
+   Camera — native capture via bridge, file input fallback
+   ===================================================================== */
+function capturePhoto(){
+  vibrate(15);
+  if(NATIVE){
+    try{
+      setStatus('processing','PROCESSING');
+      NATIVE.capturePhoto();
+      return;
+    }catch(e){}
+  }
+  document.getElementById('filePick').click();
+}
+document.getElementById('filePick').addEventListener('change',(e)=>{
+  const f=e.target.files[0];
+  if(!f) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const b64=reader.result.split(',')[1];
+    handlePhoto(b64,f.type||'image/jpeg');
+  };
+  reader.readAsDataURL(f);
+  e.target.value='';
+});
+function handlePhoto(b64,mime){
+  pendingPhoto={b64:b64,mime:mime};
+  showToast('Photo captured — type a question or press send');
+  addMsg('user','📷 [Photo attached]',{img:'data:'+mime+';base64,'+b64});
+  writeLog('file','Photo captured ('+mime+')');
+  setStatus('listening','READY');
+}
+
+/* =====================================================================
+   Sounds — WebAudio beeps
+   ===================================================================== */
+let audioCtx=null;
+function beep(freq,dur,type,vol){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.08,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur/1000);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime+dur/1000);
+  }catch(e){}
+}
+function playListening(){ if(soundOn) beep(880,80,'sine'); }
+function playDone(){ if(soundOn){ beep(1318,90,'sine'); setTimeout(()=>beep(1760,120,'sine'),100); } }
+function playError(){ if(soundOn){ beep(220,220,'sawtooth',0.1); } }
+
+/* =====================================================================
+   Mute / sound / fullscreen / clock
+   ===================================================================== */
+function toggleMute(){
+  muted=!muted;
+  const ring=document.getElementById('voiceRing');
+  const btn=document.getElementById('muteBtn');
+  ring.className='voice-ring'+(muted?' muted':'');
+  btn.className='abtn'+(muted?' muted-on':'');
+  btn.textContent=muted?'🔇':'🎙';
+  if(muted){
+    setStatus('idle','MUTED');
+    stopVoice(); stopSpeaking();
+    writeLog('sys','Microphone muted.');
+  }else{
+    setStatus('listening','READY');
+    writeLog('sys','Microphone active.');
+  }
+  vibrate(10);
+}
+function toggleSound(){
+  soundOn=!soundOn; savePref('sound',soundOn);
+  document.getElementById('soundBtn').className='abtn'+(soundOn?' on':'');
+  document.getElementById('setSound').className='toggle'+(soundOn?' on':'');
+  showToast('Sound '+(soundOn?'ON':'OFF'));
+  if(soundOn) playDone();
+  writeLog('sys','Sound '+(soundOn?'enabled':'disabled')+'.');
+}
+function toggleFullscreen(){
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+}
+function clearChat(){
+  convHistory=[];
+  chatEl.innerHTML='<div class="welcome" style="text-align:center;color:var(--text-dim);font-size:13px;margin-top:40px;opacity:0.6"><div style="font-size:2rem;margin-bottom:8px">&#x1F44B;</div>Say or type something to start<br><span style="font-size:11px;margin-top:6px;display:block">Tap the mic or use the text input</span></div>';
+  saveConv();
+  showToast('Chat cleared');
+}
+function tickClock(){
+  const d=new Date();
+  document.getElementById('clockT').textContent=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('clockD').textContent=d.toLocaleDateString([],{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+}
+
+/* =====================================================================
+   Log
+   ===================================================================== */
+let logEntries=JSON.parse(localStorage.getItem('vayu_log')||'[]');
+function writeLog(tag,text){
+  logEntries.push({tag:tag,text:text,t:Date.now()});
+  if(logEntries.length>300) logEntries=logEntries.slice(-300);
+  try{ localStorage.setItem('vayu_log',JSON.stringify(logEntries)); }catch(e){}
+  const lv=document.getElementById('logList');
+  if(lv&&lv.classList.contains('show')){
+    const el=document.createElement('div');
+    el.className='log-item '+tag;
+    el.innerHTML='<span class="lt">'+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span>'+escapeHtml(text);
+    lv.appendChild(el); lv.scrollTop=lv.scrollHeight;
+  }
+}
+
+/* =====================================================================
+   Overlays
+   ===================================================================== */
+function openOverlay(name){
+  const ov=document.getElementById('ov-'+name);
+  if(!ov) return;
+  ov.classList.add('show');
+  if(name==='log') renderLog();
+  if(name==='history') renderHistory();
+  if(name==='settings') renderSettings();
+  if(name==='modes') renderModes();
+}
+function closeOverlay(name){
+  const ov=document.getElementById('ov-'+name);
+  if(ov) ov.classList.remove('show');
+}
+function renderLog(){
+  const lv=document.getElementById('logList');
+  lv.innerHTML='';
+  for(const e of logEntries){
+    const el=document.createElement('div');
+    el.className='log-item '+e.tag;
+    el.innerHTML='<span class="lt">'+new Date(e.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span>'+escapeHtml(e.text);
+    lv.appendChild(el);
+  }
+  lv.scrollTop=lv.scrollHeight;
+}
+function renderHistory(){
+  const q=(document.getElementById('histSearch').value||'').toLowerCase();
+  const lv=document.getElementById('histList');
+  lv.innerHTML='';
+  const saved=JSON.parse(localStorage.getItem('vayu_conv')||'[]');
+  const all=saved.concat(convHistory.filter(c=>!saved.includes(c)));
+  if(!all.length){ lv.innerHTML='<div style="color:var(--text-dim);font-size:12px;text-align:center;margin-top:30px">No conversation history found.</div>'; return; }
+  let count=0;
+  for(const e of all){
+    if(q&&!e.content.toLowerCase().includes(q)) continue;
+    count++;
+    const el=document.createElement('div');
+    el.className='hist-item';
+    const label=e.role==='user'?'You':'VAYU';
+    el.innerHTML='<div class="h-t">['+new Date(e.time||Date.now()).toLocaleString()+'] '+label+'</div><div class="h-c '+e.role+'">'+escapeHtml(e.content.slice(0,160))+'</div>';
+    el.onclick=()=>{
+      navigator.clipboard&&navigator.clipboard.writeText(e.content).then(()=>showToast('Copied to clipboard')).catch(()=>showToast(e.content.slice(0,80)));
+    };
+    lv.appendChild(el);
+  }
+  const cnt=document.createElement('div');
+  cnt.style.cssText='color:var(--text-dim);font-size:10px;text-align:center;margin-top:8px;font-family:Consolas,monospace';
+  cnt.textContent='— '+count+' entries —';
+  lv.appendChild(cnt);
+}
+function exportHistory(){
+  const saved=JSON.parse(localStorage.getItem('vayu_conv')||'[]');
+  const txt='VAYU CONVERSATION EXPORT\n'+new Date().toLocaleString()+'\n'+'='.repeat(40)+'\n\n'+
+    saved.map(e=>'['+(e.role==='user'?'You':'VAYU')+'] '+(e.time?new Date(e.time).toLocaleString()+': ':'')+e.content).join('\n\n');
+  if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(()=>showToast('History copied to clipboard')).catch(()=>showToast('Export ready (copy failed)')); }
+  else showToast(txt.slice(0,80));
+  writeLog('sys','History exported ('+saved.length+' messages).');
+}
+function clearHistory(){
+  convHistory=[];
+  try{ localStorage.removeItem('vayu_conv'); }catch(e){}
+  renderHistory();
+  showToast('History cleared');
+}
+function renderSettings(){
+  document.getElementById('setKey').value=loadApiKey();
+  document.getElementById('setModel').value=modelChoice;
+  document.getElementById('setTts').className='toggle'+(ttsOn?' on':'');
+  document.getElementById('setRate').value=loadPref('rate',0.85);
+  document.getElementById('setSound').className='toggle'+(soundOn?' on':'');
+  document.getElementById('setHaptic').className='toggle'+(hapticOn?' on':'');
+  document.getElementById('setWake').className='toggle'+(wakeOn?' on':'');
+  document.getElementById('setMem').className='toggle'+(memOn?' on':'');
+  const si=document.getElementById('sysInfo');
+  si.innerHTML='<b>VAYU v1.1.0</b><br><span style="color:var(--text-dim)">Groq Edition · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
+  if(NATIVE){ try{ NATIVE.getSysInfo(); }catch(e){} }
+  else{
+    const mem=loadMemory();
+    si.innerHTML='<b>VAYU v1.1.0</b><br><span style="color:var(--text-dim)">Groq Edition · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
+  }
+}
+function renderModes(){
+  for(const m of ['default','research','professional']){
+    document.getElementById('mode-'+m).className='mode-card'+(currentMode===m?' active':'');
+  }
+}
+function setMode(m){
+  currentMode=m; savePref('mode',m);
+  renderModes();
+  writeLog('sys','Mode set to '+m.toUpperCase()+'.');
+  showToast('Mode: '+m.toUpperCase());
+  closeOverlay('modes');
+  document.getElementById('modeBtn').className='abtn on';
+  setTimeout(()=>document.getElementById('modeBtn').className='abtn',1200);
+}
+function togglePref(k){
+  if(k==='tts'){ ttsOn=!ttsOn; savePref('tts',ttsOn); document.getElementById('setTts').className='toggle'+(ttsOn?' on':''); }
+  if(k==='sound'){ soundOn=!soundOn; savePref('sound',soundOn); document.getElementById('setSound').className='toggle'+(soundOn?' on':''); if(soundOn) playDone(); }
+  if(k==='haptic'){ hapticOn=!hapticOn; savePref('haptic',hapticOn); document.getElementById('setHaptic').className='toggle'+(hapticOn?' on':''); }
+  if(k==='wake'){ wakeOn=!wakeOn; savePref('wake',wakeOn); document.getElementById('setWake').className='toggle'+(wakeOn?' on':''); if(NATIVE){ try{ NATIVE.setWakeWord(wakeOn); }catch(e){} } showToast('Wake word '+(wakeOn?'ON':'OFF')); }
+  if(k==='mem'){ memOn=!memOn; savePref('mem',memOn); document.getElementById('setMem').className='toggle'+(memOn?' on':''); }
+}
+function setRate(v){ savePref('rate',parseFloat(v)); if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(v)); }catch(e){} } }
+function saveSettings(){
+  const key=document.getElementById('setKey').value.trim();
+  if(key){
+    if(!key.startsWith('gsk_')&&!key.startsWith('gsk-')){ showToast('Invalid Groq key (should start with gsk_)'); return; }
+    saveApiKeyToStorage(key);
+  }
+  modelChoice=document.getElementById('setModel').value;
+  savePref('model',modelChoice);
+  writeLog('sys','Settings saved.');
+  showToast('Settings saved');
+  closeOverlay('settings');
+}
+function resetApp(){
+  if(!confirm('Factory reset — delete key, chat, memory and settings?')) return;
+  try{
+    localStorage.removeItem('vayu_api_key'); localStorage.removeItem('vayu_conv');
+    localStorage.removeItem('vayu_memory'); localStorage.removeItem('vayu_log');
+    localStorage.removeItem('vayu_mode'); localStorage.removeItem('vayu_model');
+  }catch(e){}
+  showToast('Reset complete — restarting');
+  setTimeout(()=>location.reload(),800);
+}
+function onSysInfo(json){
+  try{
+    const s=JSON.parse(json);
+    document.getElementById('chipBat').textContent=s.batteryPct>=0?(s.batteryPct+'%'+(s.charging?' ⚡':'')):'--';
+    document.getElementById('chipRam').textContent=s.ramPct>=0?s.ramPct+'%':'--';
+    document.getElementById('chipNet').textContent=s.network||'--';
+    const chipModel=document.getElementById('chipModel');
+    chipModel.textContent=s.model||'--';
+    document.getElementById('chipModelWrap').style.display='';
+    const si=document.getElementById('sysInfo');
+    if(si&&si.parentElement&&document.getElementById('ov-settings').classList.contains('show')){
+      si.innerHTML='<b>'+escapeHtml(s.device||'DEVICE')+'</b><br>'+
+        '<span style="color:var(--text-dim)">'+escapeHtml(s.model||'')+' · Android '+escapeHtml(s.android||'')+'</span><br>'+
+        'BATTERY: '+(s.batteryPct>=0?s.batteryPct+'%'+(s.charging?' (charging)':''):'--')+
+        ' · RAM: '+(s.ramPct>=0?s.ramPct+'%':'--')+'<br>'+
+        'STORAGE: '+(s.storage||'--')+' · NET: '+(s.network||'--')+'<br>'+
+        'UPTIME: '+(s.uptime||'--')+' · MEMORY: '+loadMemory().length+' facts';
+    }
+  }catch(e){}
+}
+
+/* =====================================================================
+   Wake word
+   ===================================================================== */
+function handleWakeWord(text){
+  if(!wakeOn) return;
+  if(/\b(?:hey\s+)?vayu\b/i.test(text)){
+    showToast('VAYU detected — listening');
+    vibrate(40);
+    setTimeout(()=>{ if(!isListening&&!isProcessing) startVoice(); },300);
+  }
+}
+
+/* =====================================================================
+   Native callbacks (invoked by Android bridge)
+   ===================================================================== */
+window.VayuNative={
+  onSpeechResult:function(t){ handleSpeechResult(t); },
+  onSpeechError:function(msg){ voiceStopped(); showToast(msg||'Voice error'); },
+  onSpeakStart:function(){ setStatus('speaking','SPEAKING'); },
+  onSpeakDone:function(){ if(!muted) setStatus('listening','READY'); },
+  onPhoto:function(b64,mime){ handlePhoto(b64,mime||'image/jpeg'); },
+  onPhotoCancel:function(){ setStatus('listening','READY'); },
+  onSysInfo:function(json){ onSysInfo(json); },
+  onWakeWord:function(text){ handleWakeWord(text); }
+};
+
+/* =====================================================================
+   Init
+   ===================================================================== */
+function initVayu(){
+  chatSession={provider:'groq'};
+  setStatus('listening','READY');
+  showToast('VAYU is ready');
+  document.getElementById('splash').className='splash hidden';
+  document.getElementById('apiSetup').className='api-setup';
+  document.getElementById('app').className='show';
+  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.1.0');
+  writeLog('sys','Mode: '+currentMode.toUpperCase()+'. Model: '+modelChoice);
+  if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(loadPref('rate',0.85))); NATIVE.setWakeWord(wakeOn); NATIVE.getSysInfo(); }catch(e){} }
+}
+function saveConv(){
+  try{ localStorage.setItem('vayu_conv',JSON.stringify(convHistory)); }catch(e){}
+}
+(function autoInit(){
+  document.getElementById('apiStartBtn').onclick=()=>{
+    const key=document.getElementById('apiKeyInput').value.trim();
+    const err=document.getElementById('apiError');
+    if(!key){ err.textContent='Please enter your Groq API key'; return; }
+    if(!key.startsWith('gsk_')&&!key.startsWith('gsk-')){ err.textContent='Invalid Groq key format (should start with gsk_)'; return; }
+    err.textContent='';
+    saveApiKeyToStorage(key);
+    initVayu();
+  };
+  const key=loadApiKey();
+  if(key){ initVayu(); }
+  else{
+    document.getElementById('splash').className='splash hidden';
+    document.getElementById('apiSetup').className='api-setup show';
+  }
+  const saved=JSON.parse(localStorage.getItem('vayu_conv')||'[]');
+  if(saved.length){
+    convHistory=saved;
+    for(const e of saved) addMsg(e.role,e.content);
+  }else{
+    chatEl.innerHTML='<div class="welcome" style="text-align:center;color:var(--text-dim);font-size:13px;margin-top:40px;opacity:0.6"><div style="font-size:2rem;margin-bottom:8px">&#x1F44B;</div>Say or type something to start<br><span style="font-size:11px;margin-top:6px;display:block">Tap the mic or use the text input</span></div>';
+  }
+  /* hologram */
+  const cv=document.getElementById('holo');
+  function sizeHolo(){
+    const wrap=cv.parentElement;
+    const vh=window.innerHeight;
+    const h=Math.max(230,Math.min(360,vh*0.34));
+    wrap.style.height=h+'px';
+    cv.style.height=h+'px';
+    if(holo) holo.resize();
+  }
+  window.addEventListener('resize',sizeHolo);
+  sizeHolo();
+  holo=new Hologram(cv);
+  holo.muted=muted;
+  holo.loop();
+  /* clock */
+  tickClock();
+  setInterval(tickClock,1000);
+  /* sys poll */
+  if(NATIVE) setInterval(()=>{ try{ NATIVE.getSysInfo(); }catch(e){} },8000);
+  /* prefs UI */
+  document.getElementById('soundBtn').className='abtn'+(soundOn?' on':'');
+  document.getElementById('muteBtn').className='abtn';
+  document.getElementById('modeBtn').className='abtn';
+  if(ttsOn&&!muted) setStatus('listening','READY');
+})();
+
+/* expose for inline handlers */
+window.sendText=sendText;
+window.toggleVoice=toggleVoice;
+window.capturePhoto=capturePhoto;
+window.clearChat=clearChat;
+window.toggleMute=toggleMute;
+window.toggleSound=toggleSound;
+window.toggleFullscreen=toggleFullscreen;
+window.openOverlay=openOverlay;
+window.closeOverlay=closeOverlay;
+window.setMode=setMode;
+window.setRate=setRate;
+window.togglePref=togglePref;
+window.saveSettings=saveSettings;
+window.resetApp=resetApp;
+window.renderHistory=renderHistory;
+window.exportHistory=exportHistory;
+window.clearHistory=clearHistory;
+</script>
+</body>
+</html>

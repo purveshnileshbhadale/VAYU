@@ -1,0 +1,26 @@
+{
+  "name": "VAYU — AI Voice Assistant",
+  "short_name": "VAYU",
+  "description": "VAYU AI Voice Assistant powered by Groq — hologram UI, voice chat, camera vision & device control",
+  "start_url": "/vayu-app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#00060a",
+  "theme_color": "#00060a",
+  "scope": "/vayu-app/",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -81,7 +81,8 @@ def _run_generated_code(description: str, speak: Callable | None = None) -> str:
         result = subprocess.run(
             [sys.executable, tmp_path],
             capture_output=True, text=True,
-            timeout=120, cwd=str(Path.home())
+            timeout=120, cwd=str(Path.home()),
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
 
         try:
