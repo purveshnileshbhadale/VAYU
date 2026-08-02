@@ -1229,6 +1229,31 @@ class SettingsDialog(QDialog):
         link_hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
         layout.addWidget(link_hint)
 
+        layout.addSpacing(4)
+        layout.addWidget(section("CLOUD LINK (INTERNET)"))
+
+        pair_row = QHBoxLayout()
+        self._cloud_pair = QLineEdit()
+        self._cloud_pair.setPlaceholderText("same code on phone & laptop")
+        self._cloud_pair.setFont(QFont("Courier New", 9))
+        self._cloud_pair.setStyleSheet(self._groq_key.styleSheet())
+        pair_row.addWidget(QLabel("Pair code:"))
+        pair_row.addWidget(self._cloud_pair, stretch=1)
+        layout.addLayout(pair_row)
+
+        cloud_hint = QLabel("Control your phone from anywhere — no same-WiFi needed. "
+                            "Enter the SAME pair code on the phone's VAYU app → Settings → Cloud Link. "
+                            "The phone can also control this laptop over the internet.")
+        cloud_hint.setFont(QFont("Courier New", 7))
+        cloud_hint.setWordWrap(True)
+        cloud_hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        layout.addWidget(cloud_hint)
+
+        self._use_groq_cb = QCheckBox("Use Groq voice mode (works without a Gemini key)")
+        self._use_groq_cb.setFont(QFont("Courier New", 8))
+        self._use_groq_cb.setStyleSheet(self._sound_cb.styleSheet())
+        layout.addWidget(self._use_groq_cb)
+
         layout.addStretch()
 
         btn_row = QHBoxLayout()
@@ -1270,6 +1295,8 @@ class SettingsDialog(QDialog):
             self._groq_key.setText(keys.get("groq_api_key", ""))
             self._phone_ip.setText(keys.get("phone_ip", ""))
             self._phone_pin.setText(keys.get("phone_pin", "8421"))
+            self._cloud_pair.setText(keys.get("cloud_pair", ""))
+            self._use_groq_cb.setChecked(bool(keys.get("use_groq", False)))
         except Exception:
             pass
 
@@ -1298,6 +1325,9 @@ class SettingsDialog(QDialog):
             if phone_ip:
                 data["phone_ip"] = phone_ip
             data["phone_pin"] = phone_pin
+            if self._cloud_pair.text().strip():
+                data["cloud_pair"] = self._cloud_pair.text().strip()
+            data["use_groq"] = bool(self._use_groq_cb.isChecked())
             api_file.write_text(json.dumps(data, indent=4), encoding="utf-8")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to save keys: {e}")

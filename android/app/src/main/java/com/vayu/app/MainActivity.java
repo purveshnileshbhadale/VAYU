@@ -824,9 +824,9 @@ public class MainActivity extends AppCompatActivity {
             int curVer = appVersionCode();
             if (curVer <= lastVer) return;
             prefs.edit().putInt("last_version", curVer).apply();
-            if (curVer >= 5) {
-                notify("VAYU 1.3.1 — app opening fixed",
-                        "Opening apps, listing apps and search suggestions now work on Android 11+ (package visibility fix).",
+            if (curVer >= 6) {
+                notify("VAYU 1.4.0 — Cloud Link",
+                        "Control your laptop & phone from anywhere over the internet (pair code), desktop Groq mode (no Gemini key), plus app-opening fixes.",
                         3001);
             } else if (curVer >= 4) {
                 notify("VAYU 1.3.0 — Jarvis Edition installed",
@@ -848,7 +848,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {
-            return "1.3.0";
+            return "1.4.0";
         }
     }
 

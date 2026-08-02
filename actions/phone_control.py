@@ -75,24 +75,55 @@ def phone_control(parameters=None, response=None, player=None, session_memory=No
 
     try:
         if action == "status":
-            data = status(host, port, pin)
-            return _describe(data)
+            try:
+                data = status(host, port, pin)
+            except Exception:
+                data = None
+            if not data:
+                cloud = _cloud_result(action, args)
+                if cloud and cloud.get("ok"):
+                    try:
+                        data = json.loads(cloud["result"])
+                    except Exception:
+                        data = {"batteryPct": "--"}
+                return _describe(data)
 
         if action not in _ACTION_LABELS and action not in {
                 "tool", "command", "shell"}:
             # direct passthrough of any phone tool name
             pass
 
-        result = send(host, port, pin, action, args)
-        if not result.get("ok"):
-            return f"Phone action failed: {result.get('error', 'unknown error')}"
+        try:
+            result = send(host, port, pin, action, args)
+        except Exception:
+            result = None
+        if not result or not result.get("ok"):
+            cloud = _cloud_result(action, args)
+            if cloud and cloud.get("ok"):
+                return f"{_ACTION_LABELS.get(action, action).capitalize()} — {cloud.get('result', 'done')}"
+            err = (result or {}).get("error", "unreachable")
+            return f"Phone action failed: {err}"
         label = _ACTION_LABELS.get(action, action)
         return f"{label.capitalize()} — {result.get('result', 'done')}"
 
     except Exception as e:
-        return (f"Could not reach the phone ({e}). Make sure the phone and this "
-                "computer are on the same network, the phone's VAYU app has "
-                "'Phone link' ON, and Settings → Phone IP is correct.")
+        return (f"Could not reach the phone ({e}). Make sure the phone's VAYU app "
+                "has 'Phone link' ON (and 'Cloud link' if you are not on the same "
+                "network), and Settings → Phone IP / Pair code are correct.")
+
+
+def _cloud_result(action, args):
+    """Fallback over the internet relay (Cloud Link) when LAN fails."""
+    try:
+        from remote.cloud_link import get_global_link
+        link = get_global_link()
+        if not link:
+            return None
+        if action == "status":
+            action = "device_info"
+        return link.send_tool("phone", action, args, timeout=25)
+    except Exception:
+        return None
 
 
 def _describe(data):

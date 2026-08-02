@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -334,12 +334,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="set-row"><label>Phone link</label><div class="toggle" id="setPhoneLink" onclick="togglePref('phonelink')"></div></div>
     <div class="set-note" id="phoneLinkInfo" style="margin-left:0">Enable to let your laptop control this phone.</div>
 
+    <div class="sec-title">CLOUD LINK (INTERNET)</div>
+    <div class="set-row"><label>Pair code</label><input type="text" id="setCloudCode" placeholder="same code on laptop"></div>
+    <div class="set-note">Control your laptop &amp; phone from anywhere — no same-WiFi needed. Enter the SAME pair code in VAYU Desktop → Settings → Cloud Link.</div>
+    <div class="set-row"><label>Cloud link</label><div class="toggle" id="setCloudLink" onclick="togglePref('cloudlink')"></div></div>
+    <div class="set-note" id="cloudLinkInfo" style="margin-left:0">OFF — laptop and phone only talk on the same WiFi.</div>
+
     <div style="height:14px"></div>
     <button class="btn full" onclick="saveSettings()">💾 SAVE SETTINGS</button>
     <div style="height:8px"></div>
     <button class="btn danger full" onclick="resetApp()">⚠ FACTORY RESET</button>
     <div style="height:14px"></div>
-    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.3.1 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
+    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.4.0 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
   </div>
 </div>
 
@@ -349,15 +355,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="overlay upd-overlay" id="ov-update">
   <div class="upd-box">
     <span class="upd-tag">NEW UPDATE</span>
-    <h2>VAYU <span class="upd-ver">1.3.1</span> — Jarvis Edition</h2>
+    <h2>VAYU <span class="upd-ver">1.4.0</span> — Jarvis Edition</h2>
     <div class="upd-sub">What's new, sir:</div>
     <ul class="upd-list">
-      <li><b>App opening FIXED</b> — open apps, list apps and search suggestions now work on Android 11+.</li>
+      <li><b>CLOUD LINK — control from anywhere</b> — pair your phone and laptop with one code and control each other over the internet (no same-WiFi needed).</li>
+      <li><b>Desktop works without Gemini</b> — VAYU Desktop now has a Groq voice mode (mic → Whisper → Llama → TTS), so no Gemini key is required.</li>
+      <li><b>Full laptop control from phone</b> — screen, mouse, typing, apps, files, volume, commands — over the internet.</li>
+      <li><b>App opening FIXED</b> — open apps, list apps and search suggestions work on Android 11+.</li>
       <li><b>Jarvis-style personality</b> — polite, witty and precise, like the real J.A.R.V.I.S.</li>
-      <li><b>Open apps like Bixby</b> — on any Android phone, tablet or Chromebook (70+ apps, plus any installed app by name).</li>
-      <li><b>New controls</b> — auto-rotate and Do Not Disturb, smarter flashlight handling.</li>
-      <li><b>Control your laptop from your phone</b> — VAYU can see your PC's screen, type, click, adjust volume and open apps over WiFi (or the internet).</li>
-      <li><b>Control your phone from your laptop</b> — the phone now runs its own secure remote link.</li>
       <li><b>iPhone &amp; iPad</b> — full VAYU installs as an app on iOS via Safari.</li>
     </ul>
     <button class="upd-btn" onclick="dismissUpdate()">GOT IT, SIR</button>
@@ -454,6 +459,7 @@ async function desktopApi(path,opts){
   return res;
 }
 async function execDesktopTool(name,args){
+  if(cloudLinkOn&&cloudCode&&cloudCode.trim()) return execCloudDesktop(name,args);
   try{
     let r;
     switch(name){
@@ -481,6 +487,99 @@ async function execDesktopTool(name,args){
     return '{"ok":true,"result":'+JSON.stringify(String(pretty).slice(0,300))+'}';
   }catch(e){
     return '{"ok":false,"error":"Desktop unreachable: '+String(e&&e.message||e).slice(0,100)+'"}';
+  }
+}
+
+/* =====================================================================
+   Cloud Link — control laptop & phone over the internet (no WiFi needed)
+   Relay: ntfy.sh pub/sub (WebSocket subscribe + HTTP publish)
+   ===================================================================== */
+async function sha256hex(str){
+  try{
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){
+    let h=5381;
+    for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))>>>0; }
+    return h.toString(16);
+  }
+}
+let cloudCode=loadPref('cloudcode','');
+let cloudLinkOn=loadPref('cloudlink',false);
+let cloudTopic='',cloudAuth='',cloudWs=null,cloudRetry=0;
+const cloudPending={};
+async function cloudPrepare(){
+  const code=(cloudCode||'').trim();
+  if(!code){ return false; }
+  const h=await sha256hex('vayu-link:'+code);
+  cloudTopic='vayu-link-'+h.slice(0,16);
+  cloudAuth=(await sha256hex('vayu-auth:'+code)).slice(0,16);
+  return true;
+}
+async function cloudPublish(obj){
+  if(!cloudTopic) return;
+  try{
+    obj.auth=cloudAuth;
+    await fetch('https://ntfy.sh/'+cloudTopic,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
+  }catch(e){ console.log('cloud publish',e); }
+}
+function cloudConnect(){
+  if(cloudWs&&(cloudWs.readyState===0||cloudWs.readyState===1)) return;
+  if(!cloudLinkOn||!cloudTopic) return;
+  try{
+    cloudWs=new WebSocket('wss://ntfy.sh/'+cloudTopic+'/ws');
+    cloudWs.onopen=()=>{ cloudRetry=0; writeLog('sys','CLOUD LINK CONNECTED — internet control live'); };
+    cloudWs.onmessage=async (ev)=>{
+      try{
+        const evt=JSON.parse(ev.data);
+        if(evt.event!=='message') return;
+        const msg=JSON.parse(evt.message||'{}');
+        if(!msg.auth||msg.auth!==cloudAuth) return;
+        if(msg.type==='tool'&&msg.to==='phone'){
+          let result='{"ok":true,"result":"done"}';
+          try{
+            const name=String(msg.name||'');
+            const args=(msg.args||{});
+            if(name==='status') name='device_info';
+            if(name.indexOf('desktop_')===0){
+              result=await execDesktopTool(name,args);
+            }else{
+              result=execDeviceTool(name,args);
+            }
+          }catch(e){ result='{"ok":false,"error":"'+String(e).slice(0,120)+'"}'; }
+          cloudPublish({to:msg.from||'laptop',from:'phone',type:'result',id:msg.id,result:result});
+        }else if(msg.type==='result'&&msg.to==='phone'){
+          const cb=cloudPending[msg.id];
+          if(cb){ delete cloudPending[msg.id]; cb(msg.result,msg.error); }
+        }
+      }catch(e){ console.log('cloud msg',e); }
+    };
+    cloudWs.onclose=()=>{
+      cloudWs=null;
+      if(cloudLinkOn&&cloudTopic){
+        cloudRetry=Math.min(cloudRetry+1,10);
+        setTimeout(cloudConnect,3000*cloudRetry);
+      }
+    };
+    cloudWs.onerror=()=>{ try{ cloudWs.close(); }catch(e){} };
+  }catch(e){ console.log('cloud ws',e); }
+}
+function cloudSendTool(target,name,args,timeout){
+  return new Promise(async(resolve)=>{
+    if(!cloudTopic){ resolve({ok:false,error:'No pair code set'}); return; }
+    const id=Math.random().toString(36).slice(2)+Date.now().toString(36);
+    cloudPending[id]=(res,err)=>resolve({ok:!err,result:res,error:err});
+    await cloudPublish({to:target,from:'phone',type:'tool',id:id,name:name,args:args||{}});
+    setTimeout(()=>{ if(cloudPending[id]){ delete cloudPending[id]; resolve({ok:false,error:'No answer from '+target+' (is its Cloud Link ON?)'}); } },timeout||30000);
+  });
+}
+async function execCloudDesktop(name,args){
+  try{
+    const r=await cloudSendTool('laptop',name,args,40000);
+    if(!r.ok) return '{"ok":false,"error":"Laptop unreachable over internet: '+String(r.error||'no answer').slice(0,120)+'"}';
+    return r.result||'{"ok":true,"result":"Done."}';
+  }catch(e){
+    return '{"ok":false,"error":"Cloud link error: '+String(e).slice(0,100)+'"}';
   }
 }
 
@@ -935,6 +1034,9 @@ function buildSystemPrompt(){
     +'focus windows, browse files, or send it natural-language commands via desktop_command.\n'
     +'- Use desktop_status first to check the link. If it fails, tell the user the laptop is '
     +'unreachable and to check Settings → Remote Link (same WiFi or tunnel).\n'
+    +'- The laptop may also be reachable over the internet via Cloud Link (Settings → Cloud Link '
+    +'with a pair code). If the laptop is unreachable locally, the desktop_* tools still work '
+    +'through the internet. Do not retry more than once.\n'
     +'- Never pretend you looked at a screenshot you did not actually capture.\n\n'
     +(MODE_PROMPTS[currentMode]||'');
 }
@@ -1376,12 +1478,18 @@ function renderSettings(){
   const pli=document.getElementById('phoneLinkInfo');
   if(pli) pli.innerHTML=phoneLinkOn?'<b style="color:var(--green)">ON</b> — laptop can control this phone.<br>Address: <b style="color:var(--pri)">'+(desktopHost?'':'')+'</b>'+(phoneLinkInfoAddr||'')+'<br><span style="font-size:9px">Use it in VAYU Desktop → Settings → Phone IP. PIN: '+desktopPin+'</span>'
     :'<b style="color:var(--red)">OFF</b> — phone is not controllable remotely.';
+  document.getElementById('setCloudCode').value=cloudCode;
+  document.getElementById('setCloudLink').className='toggle'+(cloudLinkOn?' on':'');
+  const cli=document.getElementById('cloudLinkInfo');
+  if(cli) cli.innerHTML=(cloudLinkOn&&cloudCode&&cloudCode.trim())
+    ?'<b style="color:var(--green)">ON</b> — connected through the internet relay (works anywhere).<br><span style="font-size:9px">Same pair code is set in VAYU Desktop → Settings → Cloud Link. Desktop tools now go over the internet.</span>'
+    :'<b style="color:var(--red)">OFF</b> — laptop and phone only talk on the same WiFi.';
   const si=document.getElementById('sysInfo');
-  si.innerHTML='<b>VAYU v1.3.1</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
+  si.innerHTML='<b>VAYU v1.4.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
   if(NATIVE){ try{ NATIVE.getSysInfo(); }catch(e){} }
   else{
     const mem=loadMemory();
-    si.innerHTML='<b>VAYU v1.3.1</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
+    si.innerHTML='<b>VAYU v1.4.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
   }
 }
 let phoneLinkInfoAddr='';
@@ -1406,6 +1514,15 @@ function togglePref(k){
   if(k==='wake'){ wakeOn=!wakeOn; savePref('wake',wakeOn); document.getElementById('setWake').className='toggle'+(wakeOn?' on':''); if(NATIVE){ try{ NATIVE.setWakeWord(wakeOn); }catch(e){} } showToast('Wake word '+(wakeOn?'ON':'OFF')); }
   if(k==='mem'){ memOn=!memOn; savePref('mem',memOn); document.getElementById('setMem').className='toggle'+(memOn?' on':''); }
   if(k==='phonelink'){ phoneLinkOn=!phoneLinkOn; savePref('phonelink',phoneLinkOn); document.getElementById('setPhoneLink').className='toggle'+(phoneLinkOn?' on':''); if(NATIVE){ try{ NATIVE.setPhoneLink(phoneLinkOn); }catch(e){} } showToast('Phone link '+(phoneLinkOn?'ON':'OFF')); renderSettings(); }
+  if(k==='cloudlink'){
+    cloudLinkOn=!cloudLinkOn;
+    savePref('cloudlink',cloudLinkOn);
+    if(cloudLinkOn&&cloudCode&&cloudCode.trim()){
+      cloudPrepare().then(()=>{ cloudConnect(); if(cloudWs&&cloudWs.readyState===1) showToast('Cloud link ON — internet control live'); else showToast('Cloud link ON — connecting…'); });
+    }
+    renderSettings();
+    showToast('Cloud link '+(cloudLinkOn?'ON':'OFF')+(cloudLinkOn&&!cloudCode?' (set a pair code first)':''));
+  }
 }
 function setRate(v){ savePref('rate',parseFloat(v)); if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(v)); }catch(e){} } }
 function saveSettings(){
@@ -1421,6 +1538,13 @@ function saveSettings(){
   savePref('desktop',desktopHost);
   savePref('deskpin',desktopPin);
   desktopToken='';
+  const newCode=document.getElementById('setCloudCode').value.trim();
+  if(newCode!==cloudCode){
+    cloudCode=newCode;
+    savePref('cloudcode',cloudCode);
+    if(cloudWs){ try{ cloudWs.close(); }catch(e){} cloudWs=null; }
+    if(cloudLinkOn&&cloudCode){ cloudPrepare().then(()=>cloudConnect()); }
+  }
   writeLog('sys','Settings saved.');
   showToast('Settings saved');
   closeOverlay('settings');
@@ -1500,17 +1624,18 @@ function initVayu(){
   document.getElementById('splash').className='splash hidden';
   document.getElementById('apiSetup').className='api-setup';
   document.getElementById('app').className='show';
-  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.3.1');
+  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.4.0');
   writeLog('sys','Mode: '+currentMode.toUpperCase()+'. Model: '+modelChoice);
+  if(cloudLinkOn&&cloudCode&&cloudCode.trim()){ cloudPrepare().then(()=>cloudConnect()); }
   if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(loadPref('rate',0.85))); NATIVE.setWakeWord(wakeOn); NATIVE.getSysInfo(); }catch(e){} }
   maybeShowUpdate();
 }
 function maybeShowUpdate(){
-  try{ if(localStorage.getItem('vayu_seen_update')==='1.3.1') return; }catch(e){}
+  try{ if(localStorage.getItem('vayu_seen_update')==='1.4.0') return; }catch(e){}
   setTimeout(()=>{ document.getElementById('ov-update').className='overlay upd-overlay show'; },1500);
 }
 function dismissUpdate(){
-  try{ localStorage.setItem('vayu_seen_update','1.3.1'); }catch(e){}
+  try{ localStorage.setItem('vayu_seen_update','1.4.0'); }catch(e){}
   document.getElementById('ov-update').className='overlay upd-overlay';
 }
 function saveConv(){

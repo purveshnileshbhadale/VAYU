@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VAYU — AI Voice Assistant | Intelligent Desktop Companion</title>
     <meta name="description" content="VAYU is a cutting-edge AI voice assistant with multi-provider AI, hand gesture control, live camera feed, Research/Professional modes, 3D holographic UI, screen vision, plugin system, vector memory, and full computer control. Download for Windows and macOS.">
-    <meta name="keywords" content="VAYU, AI assistant, voice assistant, Windows, macOS, open source, Gemini, AI desktop companion">
+    <meta name="keywords" content="VAYU, AI assistant, voice assistant, Windows, macOS, Android, open source, Gemini, Groq, AI desktop companion, AI phone assistant">
     <meta name="author" content="Purvesh Nilesh Bhadale">
     <meta property="og:title" content="VAYU — AI Voice Assistant">
     <meta property="og:description" content="Your intelligent voice companion with 3D holographic UI, multi-provider AI, and full computer control.">
@@ -18,13 +18,13 @@
 
     <style>
         :root {
-            --bg-primary: #06060f;
-            --bg-secondary: #0a0a1a;
-            --bg-card: rgba(255,255,255,0.03);
-            --bg-card-hover: rgba(255,255,255,0.06);
-            --text-primary: #f0f0f5;
-            --text-secondary: #9090b0;
-            --text-muted: #606080;
+            --bg-primary: #020205;
+            --bg-secondary: #04040a;
+            --bg-card: rgba(255,255,255,0.02);
+            --bg-card-hover: rgba(255,255,255,0.04);
+            --text-primary: #e0e0ea;
+            --text-secondary: #707090;
+            --text-muted: #404060;
             --accent: #2563eb;
             --accent-light: #60a5fa;
             --accent-dark: #1d4ed8;
@@ -36,6 +36,29 @@
             --radius: 16px;
             --radius-sm: 10px;
             --radius-lg: 24px;
+            --glow-cyan: rgba(0,212,255,0.15);
+            --glow-purple: rgba(124,58,237,0.12);
+        }
+
+        @keyframes glitch {
+            0% { text-shadow: 2px 0 #00d4ff, -2px 0 #a78bfa; }
+            20% { text-shadow: -2px 0 #00d4ff, 2px 0 #a78bfa; }
+            40% { text-shadow: 2px 0 #00d4ff, -2px 0 #a78bfa; }
+            60% { text-shadow: -1px 0 #00d4ff, 1px 0 #a78bfa; }
+            80% { text-shadow: 1px 0 #00d4ff, -1px 0 #a78bfa; }
+            100% { text-shadow: 2px 0 #00d4ff, -2px 0 #a78bfa; }
+        }
+
+        @keyframes data-stream {
+            0% { transform: translateY(-100%); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        @keyframes neon-pulse {
+            0%, 100% { box-shadow: 0 0 5px var(--glow-cyan), 0 0 10px var(--glow-cyan), 0 0 20px rgba(0,212,255,0.05); }
+            50% { box-shadow: 0 0 10px var(--glow-cyan), 0 0 20px var(--glow-cyan), 0 0 40px rgba(0,212,255,0.1); }
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -63,10 +86,50 @@
         ::-webkit-scrollbar-thumb { background: #1e1e3a; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #2a2a4a; }
 
+        .cyber-grid {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(0,212,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .scanline-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,212,255,0.008) 2px,
+                rgba(0,212,255,0.008) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .data-stream {
+            position: fixed;
+            top: 0; right: 8%;
+            width: 2px;
+            height: 200px;
+            background: linear-gradient(to bottom, transparent, rgba(0,212,255,0.3), transparent);
+            animation: data-stream 4s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .data-stream:nth-child(2) { right: 15%; animation-delay: 1.5s; width: 1px; }
+        .data-stream:nth-child(3) { right: 25%; animation-delay: 3s; height: 150px; }
+        .data-stream:nth-child(4) { left: 12%; animation-delay: 0.8s; }
+        .data-stream:nth-child(5) { left: 30%; animation-delay: 2.2s; height: 120px; width: 1px; }
+
         .noise-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            opacity: 0.03;
+            opacity: 0.015;
             pointer-events: none;
             z-index: 0;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -79,10 +142,41 @@
             width: 140vw;
             height: 140vh;
             background:
-                radial-gradient(ellipse at 20% 20%, rgba(37,99,235,0.06) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 80%, rgba(124,58,237,0.04) 0%, transparent 50%);
+                radial-gradient(ellipse at 20% 20%, rgba(0,212,255,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(124,58,237,0.03) 0%, transparent 50%);
             pointer-events: none;
             z-index: 0;
+        }
+
+        .glitch-text {
+            animation: glitch 3s infinite;
+            position: relative;
+        }
+        .glitch-text::before,
+        .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0.5;
+        }
+        .glitch-text::before {
+            color: #00d4ff;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-clip 4s infinite linear alternate;
+        }
+        .glitch-text::after {
+            color: #a78bfa;
+            clip: rect(20px, 450px, 30px, 0);
+            animation: glitch-clip 3s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-clip {
+            0% { clip: rect(10px, 9999px, 30px, 0); }
+            20% { clip: rect(40px, 9999px, 70px, 0); }
+            40% { clip: rect(15px, 9999px, 45px, 0); }
+            60% { clip: rect(55px, 9999px, 80px, 0); }
+            80% { clip: rect(25px, 9999px, 50px, 0); }
+            100% { clip: rect(5px, 9999px, 35px, 0); }
         }
 
         .container {
@@ -98,7 +192,7 @@
             position: fixed;
             top: 0; left: 0; right: 0;
             z-index: 100;
-            background: rgba(6,6,15,0.7);
+            background: rgba(2,2,5,0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
@@ -106,7 +200,7 @@
         }
 
         nav.scrolled {
-            border-color: rgba(37,99,235,0.15);
+            border-color: rgba(0,212,255,0.2);
         }
 
         .nav-inner {
@@ -271,38 +365,56 @@
             font-family: inherit;
         }
 
+        .btn {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+            pointer-events: none;
+        }
+        .btn:hover::after {
+            left: 100%;
+        }
+
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent), var(--purple));
+            background: linear-gradient(135deg, #00d4ff, var(--purple));
             color: #fff;
-            box-shadow: 0 4px 20px rgba(37,99,235,0.3);
+            box-shadow: 0 4px 20px rgba(0,212,255,0.3);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(37,99,235,0.4);
+            box-shadow: 0 8px 30px rgba(0,212,255,0.4);
         }
 
         .btn-secondary {
-            background: rgba(255,255,255,0.04);
+            background: rgba(0,212,255,0.04);
             color: var(--text-primary);
-            border: 1px solid var(--border);
+            border: 1px solid rgba(0,212,255,0.15);
         }
 
         .btn-secondary:hover {
-            background: rgba(255,255,255,0.08);
+            background: rgba(0,212,255,0.08);
             transform: translateY(-2px);
-            border-color: rgba(255,255,255,0.15);
+            border-color: rgba(0,212,255,0.3);
         }
 
         .btn-github {
-            background: rgba(255,255,255,0.06);
+            background: rgba(0,212,255,0.04);
             color: var(--text-primary);
-            border: 1px solid var(--border);
+            border: 1px solid rgba(0,212,255,0.1);
         }
 
         .btn-github:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(0,212,255,0.08);
             transform: translateY(-2px);
+            border-color: rgba(0,212,255,0.25);
         }
 
         /* ─── Hero Visual ─── */
@@ -313,83 +425,10 @@
             position: relative;
         }
 
-        .holographic-sphere {
-            width: 340px;
-            height: 340px;
-            position: relative;
-        }
-
-        .sphere-core {
-            width: 340px;
-            height: 340px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 35% 35%, rgba(37,99,235,0.15) 0%, rgba(124,58,237,0.08) 40%, transparent 70%);
-            position: absolute;
-            top: 0; left: 0;
-            box-shadow:
-                0 0 60px rgba(37,99,235,0.15),
-                inset 0 0 60px rgba(37,99,235,0.05);
-            animation: sphere-pulse 4s ease-in-out infinite;
-        }
-
-        @keyframes sphere-pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.03); opacity: 0.8; }
-        }
-
-        .sphere-ring {
-            position: absolute;
-            top: 50%; left: 50%;
-            border-radius: 50%;
-            border: 1.5px solid rgba(37,99,235,0.2);
-            transform-style: preserve-3d;
-            animation: spin-slow 12s linear infinite;
-        }
-
-        .sphere-ring:nth-child(2) {
-            width: 300px; height: 300px;
-            margin: -150px 0 0 -150px;
-            border-color: rgba(37,99,235,0.15);
-        }
-
-        .sphere-ring:nth-child(3) {
-            width: 260px; height: 260px;
-            margin: -130px 0 0 -130px;
-            border-color: rgba(124,58,237,0.15);
-            animation-direction: reverse;
-            animation-duration: 15s;
-        }
-
-        .sphere-ring:nth-child(4) {
-            width: 220px; height: 220px;
-            margin: -110px 0 0 -110px;
-            border-color: rgba(37,99,235,0.1);
-            animation-duration: 10s;
-        }
-
-        @keyframes spin-slow {
-            from { transform: translate(-50%, -50%) rotateX(70deg) rotateZ(0deg); }
-            to { transform: translate(-50%, -50%) rotateX(70deg) rotateZ(360deg); }
-        }
-
-        .sphere-ring.tilted:nth-child(3) {
-            animation-name: spin-tilted;
-        }
-
-        @keyframes spin-tilted {
-            from { transform: translate(-50%, -50%) rotateX(55deg) rotateZ(0deg); }
-            to { transform: translate(-50%, -50%) rotateX(55deg) rotateZ(360deg); }
-        }
-
-        .sphere-orbit-dot {
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            background: var(--accent-light);
-            border-radius: 50%;
-            top: 50%; left: 50%;
-            margin: -3px 0 0 -3px;
-            box-shadow: 0 0 10px var(--accent-light);
+        #moleculeCanvas {
+            width: 380px;
+            height: 380px;
+            display: block;
         }
 
         .hero-stats {
@@ -508,25 +547,27 @@
         }
 
         .arch-card {
-            background: var(--bg-card);
+            background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(0,212,255,0.01));
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 2rem;
             text-align: center;
-            transition: all 0.3s;
+            transition: all 0.4s;
         }
 
         .arch-card:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-accent);
-            transform: translateY(-3px);
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,212,255,0.02));
+            border-color: rgba(0,212,255,0.25);
+            transform: translateY(-4px);
+            box-shadow: 0 0 20px rgba(0,212,255,0.06);
         }
 
         .arch-icon {
             width: 52px;
             height: 52px;
             border-radius: 14px;
-            background: rgba(37,99,235,0.1);
+            background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(124,58,237,0.08));
+            border: 1px solid rgba(0,212,255,0.1);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -589,25 +630,40 @@
         }
 
         .feature-card {
-            background: var(--bg-card);
+            background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(0,212,255,0.01));
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 1.75rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,212,255,0.03), transparent);
+            transition: left 0.6s;
+            pointer-events: none;
+        }
+        .feature-card:hover::before {
+            left: 100%;
         }
 
         .feature-card:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-accent);
-            transform: translateY(-3px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,212,255,0.02));
+            border-color: rgba(0,212,255,0.25);
+            transform: translateY(-4px);
+            box-shadow: 0 0 20px rgba(0,212,255,0.06), 0 12px 40px rgba(0,0,0,0.4);
         }
 
         .feature-icon {
             width: 44px;
             height: 44px;
             border-radius: 12px;
-            background: rgba(37,99,235,0.1);
+            background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(124,58,237,0.08));
+            border: 1px solid rgba(0,212,255,0.1);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -637,17 +693,141 @@
 
         .tag {
             display: inline-block;
-            background: rgba(37,99,235,0.08);
-            color: var(--accent-light);
+            background: rgba(0,212,255,0.08);
+            color: #00d4ff;
             padding: 0.15rem 0.55rem;
             border-radius: 4px;
             font-size: 0.7rem;
             font-weight: 500;
+            border: 1px solid rgba(0,212,255,0.1);
+        }
+
+        /* ─── Manual ─── */
+        .manual-section {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .manual-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.015), rgba(0,212,255,0.01));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem 2rem;
+            transition: all 0.3s;
+        }
+        .manual-card:hover {
+            border-color: rgba(0,212,255,0.2);
+            box-shadow: 0 0 15px rgba(0,212,255,0.03);
+        }
+        .manual-card h3 {
+            color: #00d4ff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .manual-card h4 {
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 1rem 0 0.4rem;
+        }
+        .manual-card p, .manual-card li {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            line-height: 1.7;
+        }
+        .manual-card ul {
+            padding-left: 1.25rem;
+            list-style: none;
+        }
+        .manual-card ul li::before {
+            content: '›';
+            color: #00d4ff;
+            font-weight: bold;
+            display: inline-block;
+            width: 1rem;
+            margin-left: -1rem;
+        }
+        .manual-card code {
+            background: rgba(0,212,255,0.1);
+            color: #60a5fa;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+        .manual-card .badge {
+            display: inline-block;
+            background: rgba(0,212,255,0.1);
+            color: #00d4ff;
+            padding: 0.1rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            border: 1px solid rgba(0,212,255,0.15);
+            margin-right: 0.3rem;
+        }
+        .manual-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .manual-gesture {
+            background: rgba(0,212,255,0.04);
+            border: 1px solid rgba(0,212,255,0.08);
+            border-radius: var(--radius-sm);
+            padding: 0.65rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .manual-gesture .gesture-name {
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.88rem;
+        }
+        .manual-gesture .gesture-action {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+        .manual-gesture .gesture-action code {
+            font-size: 0.75rem;
+        }
+        .manual-step {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+        .manual-step .step-num {
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(0,212,255,0.12);
+            border: 1px solid rgba(0,212,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #00d4ff;
+        }
+        .manual-step .step-body {
+            flex: 1;
+        }
+        .manual-step .step-body p {
+            margin: 0;
         }
 
         /* ─── Download ─── */
         #download {
-            background: linear-gradient(180deg, transparent 0%, rgba(37,99,235,0.03) 50%, transparent 100%);
+            background: linear-gradient(180deg, transparent 0%, rgba(0,212,255,0.02) 50%, transparent 100%);
         }
 
         .download-grid {
@@ -658,25 +838,38 @@
         }
 
         .download-card {
-            background: var(--bg-card);
+            background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(0,212,255,0.01));
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             padding: 2.5rem;
             text-align: center;
-            transition: all 0.3s;
+            transition: all 0.4s;
             position: relative;
             overflow: hidden;
         }
+        .download-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,212,255,0.03), transparent);
+            transition: left 0.6s;
+            pointer-events: none;
+        }
+        .download-card:hover::before {
+            left: 100%;
+        }
 
         .download-card:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-accent);
-            transform: translateY(-3px);
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,212,255,0.02));
+            border-color: rgba(0,212,255,0.25);
+            transform: translateY(-4px);
+            box-shadow: 0 0 20px rgba(0,212,255,0.06);
         }
 
         .download-card.recommended {
-            border-color: var(--accent);
-            background: rgba(37,99,235,0.04);
+            border-color: rgba(0,212,255,0.2);
+            background: linear-gradient(135deg, rgba(0,212,255,0.04), rgba(124,58,237,0.02));
         }
 
         .download-card.recommended::before {
@@ -684,7 +877,7 @@
             position: absolute;
             top: 1rem;
             right: -2rem;
-            background: linear-gradient(135deg, var(--accent), var(--purple));
+            background: linear-gradient(135deg, #00d4ff, var(--purple));
             color: #fff;
             padding: 0.2rem 2.5rem;
             font-size: 0.72rem;
@@ -1285,19 +1478,18 @@
         .fade-in-d4 { transition-delay: 0.4s; }
         .fade-in-d5 { transition-delay: 0.5s; }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .float-anim {
-            animation: float 4s ease-in-out infinite;
-        }
     </style>
 </head>
 <body>
 
 <div class="noise-overlay"></div>
+<div class="cyber-grid"></div>
+<div class="scanline-overlay"></div>
+<div class="data-stream"></div>
+<div class="data-stream"></div>
+<div class="data-stream"></div>
+<div class="data-stream"></div>
+<div class="data-stream"></div>
 <div class="bg-glow"></div>
 
 <!-- ─── Navigation ─── -->
@@ -1316,6 +1508,7 @@
             <a href="#about">About</a>
             <a href="#features">Features</a>
             <a href="#architecture">Architecture</a>
+            <a href="#manual">Manual</a>
             <a href="#creator">Creator</a>
             <a href="#download" class="nav-cta">Download</a>
         </div>
@@ -1331,7 +1524,7 @@
                     <span class="hero-badge-dot"></span>
                     v1.0 — AI-Powered Voice Assistant
                 </div>
-                <h1>Meet <span class="gradient-text">VAYU</span><br>Your Desktop AI Companion</h1>
+                <h1>Meet <span class="gradient-text glitch-text" data-text="VAYU">VAYU</span><br>Your Desktop AI Companion</h1>
                 <p>
                     A cutting-edge voice assistant that understands natural speech, sees your screen,
                     responds to hand gestures, controls your computer, and helps you get things done — 
@@ -1365,13 +1558,7 @@
                 </div>
             </div>
             <div class="hero-visual fade-in visible fade-in-d2">
-                <div class="holographic-sphere float-anim">
-                    <div class="sphere-core"></div>
-                    <div class="sphere-ring" style="width:320px;height:320px;margin:-160px 0 0 -160px;"></div>
-                    <div class="sphere-ring tilted" style="width:280px;height:280px;margin:-140px 0 0 -140px;border-color:rgba(124,58,237,0.2);"></div>
-                    <div class="sphere-ring" style="width:240px;height:240px;margin:-120px 0 0 -120px;border-color:rgba(37,99,235,0.12);"></div>
-                    <div class="sphere-ring" style="width:200px;height:200px;margin:-100px 0 0 -100px;border-color:rgba(124,58,237,0.1);animation-duration:8s;"></div>
-                </div>
+                <canvas id="moleculeCanvas" width="380" height="380"></canvas>
             </div>
         </div>
     </div>
@@ -1510,12 +1697,12 @@
             </div>
             <div class="feature-card fade-in fade-in-d2">
                 <div class="feature-icon">🔧</div>
-                <h3>Code Assistant</h3>
-                <p>Write, explain, review, fix, and execute code in any language. Your AI pair programmer that works with your development workflow.</p>
+                <h3>Self-Coding Agent</h3>
+                <p>VAYU can read, write, and modify its own source code via the Code Agent. Generate new action modules, register tools, install dependencies, review code, and explore the project — all by voice.</p>
                 <div class="feature-tags">
-                    <span class="tag">Code Gen</span>
-                    <span class="tag">Debug</span>
-                    <span class="tag">Review</span>
+                    <span class="tag">Code Agent</span>
+                    <span class="tag">Self-Modify</span>
+                    <span class="tag">Auto-Install</span>
                 </div>
             </div>
             <div class="feature-card fade-in">
@@ -1818,6 +2005,28 @@
                     <span class="tag">pyttsx3</span>
                 </div>
             </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🎯</div>
+                <h3>Responsive Cursor Control</h3>
+                <p>Index finger tracks mouse with 55% responsiveness (up from 35%) for buttery-smooth, lag-free movement. Pinch-to-click in 5 frames, peace sign for right-click. Quicker gesture confirmation (2/4 frames) and easier shake-to-alt-tab for natural, instant feedback.</p>
+                <div class="feature-tags">
+                    <span class="tag">55% Responsiveness</span>
+                    <span class="tag">Fast Click</span>
+                    <span class="tag">Low-Latency</span>
+                    <span class="tag">Smooth Tracking</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">📱</div>
+                <h3>Phone Remote Control</h3>
+                <p>Control VAYU from your phone's browser — no app needed. Send text commands, use voice-to-text via mic, tap quick actions (Mute, Mode, Vol+, Chrome, Shutdown). Works on same Wi-Fi or from anywhere via ngrok tunnel. Secured with a device code PIN.</p>
+                <div class="feature-tags">
+                    <span class="tag">No App Required</span>
+                    <span class="tag">Voice Input</span>
+                    <span class="tag">ngrok Tunnel</span>
+                    <span class="tag">Device Code Auth</span>
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -1969,60 +2178,51 @@
             <div class="download-card recommended fade-in">
                 <div class="download-os-icon">🪟</div>
                 <h3>Windows</h3>
-                <p class="os-desc">Portable ZIP for Windows 10 &amp; 11 (64-bit)</p>
-                <a href="downloads/VAYU.zip" class="download-btn win">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Download Source Code
-                    <span class="size-badge">~6 MB</span>
-                </a>
+                <p class="os-desc">Two ways to run VAYU on Windows 10 &amp; 11 (64-bit)</p>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0;">
+                    <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:10px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:#00d4ff;font-weight:600;margin-bottom:0.3rem;">🐍 Source ZIP</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Requires Python 3.10+</div>
+                        <a href="downloads/VAYU.zip" class="download-btn win" style="padding:0.5rem 0.75rem;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download ~6 MB
+                        </a>
+                        <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);">Run <code style="font-size:0.7rem;">start_vayu.bat</code></div>
+                    </div>
+                    <div style="background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.1);border-radius:10px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:#a78bfa;font-weight:600;margin-bottom:0.3rem;">📦 Standalone EXE</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">No Python needed (~227 MB)</div>
+                        <a href="https://github.com/purveshnileshbhadale/VAYU/releases/download/v1.0.0/VAYU.exe" class="download-btn win" style="padding:0.5rem 0.75rem;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download ~227 MB
+                        </a>
+                        <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);">Or <a href="https://github.com/purveshnileshbhadale/VAYU/releases" style="color:#a78bfa;" target="_blank">view all releases</a></div>
+                    </div>
+                </div>
 
                 <div class="download-deps">
-                    <h4>Requirements</h4>
-                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
-                        Requires <strong>Python 3.10+</strong> installed. The ZIP includes all source files — run <code>start_vayu.bat</code> to auto-install dependencies and launch.
-                    </p>
-
+                    <h4>Quick Start (Source ZIP)</h4>
                     <div class="setup-steps">
-                        <h4 class="steps-title">Setup Steps</h4>
                         <div class="step">
                             <div class="step-num">1</div>
                             <div class="step-content">
                                 <strong>Download &amp; Extract</strong>
-                                <p>Click the <strong>"Download Source Code"</strong> button above, then extract the ZIP anywhere on your PC.</p>
+                                <p>Click the <strong>Source ZIP</strong> button above, then extract the ZIP anywhere on your PC.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-num">2</div>
                             <div class="step-content">
                                 <strong>Run VAYU</strong>
-                                <p>Double-click <code>start_vayu.bat</code> — it will automatically install Python dependencies and launch VAYU. On first run, you'll be prompted to enter your API keys.</p>
-                                <div class="terminal-box" style="margin-top:0.5rem;">
-                                    <div class="terminal-header">
-                                        <span class="terminal-dot" style="background:#ff5f57;"></span>
-                                        <span class="terminal-dot" style="background:#febc2e;"></span>
-                                        <span class="terminal-dot" style="background:#28c840;"></span>
-                                        <span class="terminal-title">config/api_keys.json</span>
-                                    </div>
-                                    <div class="terminal-body" style="font-size:0.72rem;line-height:1.6;">
-{<br>
-  <span style="color:#a78bfa;">"gemini_api_key"</span>: <span style="color:#60a5fa;">"YOUR_GEMINI_KEY"</span>,<br>
-  <span style="color:#a78bfa;">"openrouter_api_key"</span>: <span style="color:#60a5fa;">"YOUR_OPENROUTER_KEY"</span>,<br>
-  <span style="color:#a78bfa;">"groq_api_key"</span>: <span style="color:#60a5fa;">"YOUR_GROQ_KEY"</span>,<br>
-  <span style="color:#a78bfa;">"os_system"</span>: <span style="color:#60a5fa;">"windows"</span><br>
-}
-                                    </div>
-                                </div>
+                                <p>Double-click <code>start_vayu.bat</code> — it installs dependencies and launches VAYU automatically. Enter your API keys on first run.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-num">3</div>
                             <div class="step-content">
-                                <strong>Run VAYU</strong>
-                                <p>Double-click <code>start_vayu.bat</code> — it installs dependencies and launches VAYU automatically.</p>
+                                <strong>Enable Auto-Start</strong>
+                                <p>In Settings, check "Launch VAYU on Windows startup" to auto-start minimized to the system tray.</p>
                             </div>
                         </div>
                     </div>
@@ -2033,101 +2233,59 @@
             <div class="download-card fade-in fade-in-d2">
                 <div class="download-os-icon">🍎</div>
                 <h3>macOS</h3>
-                <p class="os-desc">Portable ZIP — double-click <code>start_vayu.command</code> to run</p>
-                <a href="downloads/VAYU_mac.zip" class="download-btn mac">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Download for macOS
-                    <span class="size-badge">~6 MB</span>
-                </a>
-                <div class="download-deps">
-                    <h4>Dependencies</h4>
-                    <div class="dep-list">
-                        <span class="dep-item required">
-                            Python 3.10+
-                            <span class="dep-tag req">req</span>
-                        </span>
-                        <span class="dep-item required">
-                            PyQt6
-                            <span class="dep-tag req">req</span>
-                        </span>
-                        <span class="dep-item required">
-                            google-genai
-                            <span class="dep-tag req">req</span>
-                        </span>
-                        <span class="dep-item required">
-                            portaudio
-                            <span class="dep-tag req">req</span>
-                        </span>
-                        <span class="dep-item required">
-                            pillow
-                            <span class="dep-tag req">req</span>
-                        </span>
-                        <span class="dep-item required">
-                            numpy
-                            <span class="dep-tag req">req</span>
-                        </span>
-                        <span class="dep-item required">
-                            edge-tts
-                            <span class="dep-tag req">req</span>
-                        </span>
-                        <span class="dep-item optional">
-                            tesseract
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                        <span class="dep-item optional">
-                            opencv-python
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                        <span class="dep-item optional">
-                            mediapipe
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                        <span class="dep-item optional">
-                            PyPDF2
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                        <span class="dep-item optional">
-                            python-pptx
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                        <span class="dep-item optional">
-                            python-docx
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                        <span class="dep-item optional">
-                            PyAutoGUI
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                        <span class="dep-item optional">
-                            Quartz
-                            <span class="dep-tag opt">opt</span>
-                        </span>
-                    </div>
-                    <p style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">
-                        <span class="dep-tag req" style="margin-right:0.25rem;">req</span> Required &nbsp;
-                        <span class="dep-tag opt" style="margin-right:0.25rem;">opt</span> Optional
-                        &nbsp;— Install via <code style="color:var(--text-secondary);">brew</code> or <code style="color:var(--text-secondary);">pip</code>.
-                    </p>
+                <p class="os-desc">Two ways to run VAYU on macOS (Intel &amp; Apple Silicon)</p>
 
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0;">
+                    <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:10px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:#00d4ff;font-weight:600;margin-bottom:0.3rem;">🐍 Source ZIP</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Requires Python 3.10+</div>
+                        <a href="downloads/VAYU_mac.zip" class="download-btn mac" style="padding:0.5rem 0.75rem;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download ~6 MB
+                        </a>
+                        <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);">Run <code style="font-size:0.7rem;">start_vayu.command</code></div>
+                    </div>
+                    <div style="background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.1);border-radius:10px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:#a78bfa;font-weight:600;margin-bottom:0.3rem;">📦 Standalone .app</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">No Python needed</div>
+                        <div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:0.5rem;font-size:0.68rem;font-family:'JetBrains Mono',monospace;color:var(--text-muted);">
+                            brew install python<br>
+                            pip install pyinstaller<br>
+                            bash VAYU_mac.sh
+                        </div>
+                        <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);">macOS build requires a Mac — <a href="https://github.com/purveshnileshbhadale/VAYU/releases" style="color:#a78bfa;" target="_blank">check releases</a> for .app when available.</div>
+                    </div>
+                </div>
+
+                <div class="download-deps">
+                    <h4>Quick Start (Source ZIP)</h4>
                     <div class="setup-steps">
-                        <h4 class="steps-title">Setup Steps</h4>
                         <div class="step">
                             <div class="step-num">1</div>
                             <div class="step-content">
                                 <strong>Download &amp; Extract</strong>
-                                <p>Click <strong>"Download for macOS"</strong> above to get the ZIP. Extract it anywhere on your Mac.</p>
+                                <p>Click the <strong>Source ZIP</strong> button above, then extract the ZIP anywhere on your Mac.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-num">2</div>
                             <div class="step-content">
+                                <strong>Install Python &amp; PortAudio</strong>
+                                <p><code style="color:var(--accent-light);">brew install python@3.14 portaudio</code></p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <strong>Install Dependencies</strong>
+                                <p><code style="color:var(--accent-light);">pip install -r requirements.txt</code></p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
                                 <strong>Run VAYU</strong>
-                                <p>Double-click <code style="color:var(--accent-light);">start_vayu.command</code> — it auto-installs Python dependencies and launches VAYU. On first run, you'll be prompted to enter your API keys.</p>
-                                <p style="font-size:0.85rem;margin-top:0.3rem;">If you get a security warning, right-click the file and select <strong>Open</strong>.</p>
+                                <p>Double-click <code>start_vayu.command</code> &rarr; Terminal opens and VAYU launches. Enter your API keys on first run.</p>
                             </div>
                         </div>
                     </div>
@@ -2138,57 +2296,460 @@
             <div class="download-card fade-in">
                 <div class="download-os-icon">📱</div>
                 <h3>Android</h3>
-                <p class="os-desc">Jarvis-style AI on any Android phone, tablet or Chromebook (7+) — control your laptop by voice, and your laptop can control your phone</p>
-                <a href="/downloads/VAYU-v1.3.1.apk" class="download-btn mac">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Download APK
-                    <span class="size-badge">~3 MB</span>
-                </a>
-                <div class="download-deps">
-                    <h4>Features</h4>
-                    <div class="dep-list">
-                        <span class="dep-item required">Hologram UI<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">Groq-powered chat<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">Voice in / TTS out<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">Camera vision<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">Device control<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">App opening (any device)<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">Laptop control by voice<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">Phone control from laptop<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">Wake word<span class="dep-tag req">new</span></span>
-                        <span class="dep-item required">History &amp; memory<span class="dep-tag req">new</span></span>
-                        <span class="dep-item optional">Web App (PWA)<span class="dep-tag opt">alt</span></span>
+                <p class="os-desc">Jarvis-style · Groq-powered · works on any Android phone, tablet or Chromebook — control your laptop by voice, and your laptop can control your phone. NEW in v1.4.0: Cloud Link - pair with one code and control each other over the internet (no same-WiFi needed).</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0;">
+                    <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:10px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:#00d4ff;font-weight:600;margin-bottom:0.3rem;">🌐 Web App (PWA)</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Works on Android &amp; iPhone</div>
+                        <a href="/vayu-app/" class="download-btn win" style="padding:0.5rem 0.75rem;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            Open Web App
+                        </a>
+                        <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);">Add to Home Screen for app-like experience</div>
                     </div>
+                    <div style="background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.1);border-radius:10px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:#a78bfa;font-weight:600;margin-bottom:0.3rem;">📦 APK Download</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Native Android app (~3 MB)</div>
+                        <a href="/downloads/VAYU-v1.4.0.apk" class="download-btn mac" style="padding:0.5rem 0.75rem;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download APK ~3 MB
+                        </a>
+                        <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);">Requires Android 7+ (API 24)</div>
+                    </div>
+                </div>
+                <div class="download-deps">
+                    <h4>Getting Started</h4>
                     <div class="setup-steps">
-                        <h4 class="steps-title">Setup Steps</h4>
                         <div class="step">
                             <div class="step-num">1</div>
                             <div class="step-content">
-                                <strong>Install &amp; Open</strong>
-                                <p>Download the APK, tap it, and allow installation from unknown sources. Open the VAYU app.</p>
+                                <strong>Choose Your Way</strong>
+                                <p>Use the <strong>Web App</strong> (PWA) for instant access from any browser, or install the <strong>APK</strong> for a native experience.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-num">2</div>
                             <div class="step-content">
-                                <strong>Enter Groq Key</strong>
-                                <p>VAYU runs <strong>only on Groq</strong>. Get a free key at <code style="color:var(--accent-light);">console.groq.com/keys</code> and paste it on first launch. Your key stays on your device.</p>
+                                <strong>Enter Your API Key</strong>
+                                <p>Get a free Groq API key at <a href="https://console.groq.com/keys" style="color:#00d4ff;" target="_blank">console.groq.com/keys</a> and enter it on first launch. Your key is stored only on your device.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-num">3</div>
                             <div class="step-content">
-                                <strong>Talk &amp; Control</strong>
-                                <p>Tap the mic, type, or say "VAYU" to wake. Ask it to open apps, set alarms, timers, SMS, calls, flashlight, volume — it controls your phone.</p>
+                                <strong>Start Talking</strong>
+                                <p>Tap the mic button and speak, or type your questions. VAYU responds with text-to-speech — and can open apps, set alarms &amp; timers, send SMS, make calls, control flashlight, volume, brightness and more.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <strong>Control Your Laptop (or Phone)</strong>
+                                <p>Pair with the desktop VAYU app to control your laptop from your phone by voice — mouse, typing, apps, files and more. The desktop app can also control your phone: open apps, alarms, SMS and more.</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- iPhone / iOS -->
+            <div class="download-card fade-in fade-in-d2">
+                <div class="download-os-icon">🍏</div>
+                <h3>iPhone &amp; iPad</h3>
+                <p class="os-desc">Full VAYU app on iOS — hologram UI, voice, vision &amp; Groq chat</p>
+                <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin:1rem 0;">
+                    <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:10px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:#00d4ff;font-weight:600;margin-bottom:0.3rem;">🌐 VAYU Web App (PWA)</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Same hologram, voice chat, camera vision &amp; Groq AI — installs like an app</div>
+                        <a href="/vayu-app/" class="download-btn win" style="padding:0.5rem 0.75rem;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            Open VAYU on iOS
+                        </a>
+                        <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);">Works on iPhone, iPad &amp; macOS Safari</div>
+                    </div>
+                </div>
+                <div class="download-deps">
+                    <h4>How to Install on iPhone</h4>
+                    <div class="setup-steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <strong>Open in Safari</strong>
+                                <p>Open <code style="color:var(--accent-light);">/vayu-app/</code> in Safari on your iPhone. Tap the mic and allow microphone access.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <strong>Add to Home Screen</strong>
+                                <p>Tap the <strong>Share</strong> button (square with arrow) &rarr; scroll down &rarr; tap <strong>Add to Home Screen</strong> &rarr; Add. VAYU now launches fullscreen like a native app.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <strong>Enter Your API Key</strong>
+                                <p>Get a free Groq API key at <a href="https://console.groq.com/keys" style="color:#00d4ff;" target="_blank">console.groq.com/keys</a> and enter it on first launch.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">
+                        <strong>Note:</strong> Apple restricts websites from opening other apps or changing system settings, so the native device-control tools (open apps, alarms, flashlight…) are Android-only. Hologram, voice chat, vision, memory, modes &amp; all AI features work fully on iPhone.
+                    </p>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">📧</div>
+                <h3>Email Client</h3>
+                <p>Send emails hands-free by voice. Compose, address, and send through any SMTP server. Supports Gmail app passwords, text and HTML bodies, and multiple recipient support.</p>
+                <div class="feature-tags">
+                    <span class="tag">SMTP</span>
+                    <span class="tag">Voice Compose</span>
+                    <span class="tag">Gmail</span>
+                    <span class="tag">Multiple Recipients</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">📰</div>
+                <h3>News Reader</h3>
+                <p>Fetch live headlines from BBC, CNN, NYT, Reuters, TechCrunch, and more. Search news by keyword, browse categories (tech, sports, business), or get the latest top stories — all by voice.</p>
+                <div class="feature-tags">
+                    <span class="tag">RSS Feeds</span>
+                    <span class="tag">Live Headlines</span>
+                    <span class="tag">6 Sources</span>
+                    <span class="tag">Search</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">📶</div>
+                <h3>WiFi &amp; Network Manager</h3>
+                <p>Scan available networks, connect with a password, enable/disable adapters, forget saved networks, control Bluetooth — and scan your local network to see all connected devices with IP and MAC addresses.</p>
+                <div class="feature-tags">
+                    <span class="tag">WiFi Scan</span>
+                    <span class="tag">Device Scanner</span>
+                    <span class="tag">Bluetooth</span>
+                    <span class="tag">ARP Scan</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">💱</div>
+                <h3>Currency Converter</h3>
+                <p>Real-time exchange rates for 150+ currencies. Convert any amount between USD, EUR, INR, GBP, JPY, and more. Get live rates, compare currencies, and view all supported codes by voice.</p>
+                <div class="feature-tags">
+                    <span class="tag">150+ Currencies</span>
+                    <span class="tag">Live Rates</span>
+                    <span class="tag">Free API</span>
+                    <span class="tag">Instant Conversion</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">📊</div>
+                <h3>System Monitor</h3>
+                <p>Check current time, date, system uptime, OS details, public IP address, approximate location, CPU usage, and RAM usage. Ask "What's my IP?" or "How long has my PC been on?"</p>
+                <div class="feature-tags">
+                    <span class="tag">CPU &amp; RAM</span>
+                    <span class="tag">IP &amp; Location</span>
+                    <span class="tag">Uptime</span>
+                    <span class="tag">OS Info</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">📄</div>
+                <h3>PDF Tools</h3>
+                <p>Merge multiple PDFs into one, split documents into individual pages, extract specific page ranges, check page count and metadata, and compress file size — all with voice commands.</p>
+                <div class="feature-tags">
+                    <span class="tag">Merge</span>
+                    <span class="tag">Split</span>
+                    <span class="tag">Compress</span>
+                    <span class="tag">Extract Pages</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">💻</div>
+                <h3>Terminal &amp; Command Center</h3>
+                <p>Run any shell command, execute scripts as administrator, manage running processes (list and kill), run Python code on the fly, and get system information. Full admin control by voice.</p>
+                <div class="feature-tags">
+                    <span class="tag">PowerShell</span>
+                    <span class="tag">CMD</span>
+                    <span class="tag">Process Manager</span>
+                    <span class="tag">Admin Tasks</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🔐</div>
+                <h3>Password Generator &amp; Vault</h3>
+                <p>Generate strong random passwords, numeric PINs, and memorable passphrases with adjustable length and character types. Check password strength scores and save credentials to a local encrypted vault.</p>
+                <div class="feature-tags">
+                    <span class="tag">Strong Passwords</span>
+                    <span class="tag">Passphrases</span>
+                    <span class="tag">Strength Check</span>
+                    <span class="tag">Local Vault</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🖼️</div>
+                <h3>Desktop Organizer</h3>
+                <p>Change desktop wallpaper from local images or URLs, organize files by type or date, clean up clutter, list desktop contents, and get desktop statistics. Keep your workspace tidy by voice.</p>
+                <div class="feature-tags">
+                    <span class="tag">Wallpaper</span>
+                    <span class="tag">Auto-Organize</span>
+                    <span class="tag">Clean Desktop</span>
+                    <span class="tag">File Management</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">📐</div>
+                <h3>Unit &amp; Measurement Converter</h3>
+                <p>Convert between 100+ units across 8 categories: length, weight, temperature, volume, speed, time, data storage, and area. Supports metric, imperial, and scientific units with precise calculations.</p>
+                <div class="feature-tags">
+                    <span class="tag">8 Categories</span>
+                    <span class="tag">100+ Units</span>
+                    <span class="tag">Temperature</span>
+                    <span class="tag">Data Storage</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🔋</div>
+                <h3>Power Management</h3>
+                <p>Check battery status, put your PC to sleep or hibernate, switch between power plans (balanced, high performance, power saver, ultimate performance), and turn off the display. All by voice.</p>
+                <div class="feature-tags">
+                    <span class="tag">Battery Check</span>
+                    <span class="tag">Sleep &amp; Hibernate</span>
+                    <span class="tag">Power Plans</span>
+                    <span class="tag">Screen Off</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🧠</div>
+                <h3>Personal Memory Engine</h3>
+                <p>VAYU remembers your name, preferences, family, projects, and personal facts. Tell it something once and it recalls it later. "Remember my sister's name is Priya" — and it's stored forever.</p>
+                <div class="feature-tags">
+                    <span class="tag">Facts &amp; Preferences</span>
+                    <span class="tag">Long-Term Memory</span>
+                    <span class="tag">Vector Search</span>
+                    <span class="tag">Persistent Storage</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">💼</div>
+                <h3>LinkedIn Manager</h3>
+                <p>Search jobs by title and location, find people and companies, manage your network, check messages and notifications, create posts, and view analytics — all by voice. Opens LinkedIn in your browser instantly.</p>
+                <div class="feature-tags">
+                    <span class="tag">Job Search</span>
+                    <span class="tag">People Search</span>
+                    <span class="tag">Network Management</span>
+                    <span class="tag">Company Research</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🖥️</div>
+                <h3>Hardware Specs &amp; Monitor</h3>
+                <p>Get full system specs: CPU, GPU, RAM, motherboard, OS. Check disk usage per drive, find largest files eating space, list startup programs, view top processes by CPU/memory, manage Windows services, check battery health, and monitor sensors.</p>
+                <div class="feature-tags">
+                    <span class="tag">CPU &amp; GPU Info</span>
+                    <span class="tag">Disk Analyzer</span>
+                    <span class="tag">Process Explorer</span>
+                    <span class="tag">Battery Health</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🌐</div>
+                <h3>Network Diagnostics</h3>
+                <p>Ping hosts to check connectivity, traceroute to trace network paths, DNS lookup to resolve domains, check open ports, run speed tests, flush DNS cache, view full IP config, and show saved WiFi passwords. Full network toolbox by voice.</p>
+                <div class="feature-tags">
+                    <span class="tag">Ping &amp; Trace</span>
+                    <span class="tag">DNS Lookup</span>
+                    <span class="tag">Port Scanner</span>
+                    <span class="tag">Speed Test</span>
+                </div>
+            </div>
+            <div class="feature-card fade-in fade-in-d1">
+                <div class="feature-icon">🚀</div>
+                <h3>Auto-Start &amp; System Tray</h3>
+                <p>Launch VAYU automatically when Windows boots and minimize to the system tray. Toggle auto-start in Settings, run minimized with --minimized flag, and access show/hide/quit from the tray menu.</p>
+                <div class="feature-tags">
+                    <span class="tag">Boot Launch</span>
+                    <span class="tag">System Tray</span>
+                    <span class="tag">Minimized Mode</span>
+                    <span class="tag">One-Click Toggle</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ─── User Manual ─── -->
+<section id="manual">
+    <div class="container">
+        <span class="section-label" style="display:block;text-align:center;">Guide</span>
+        <h2 class="section-title">User Manual</h2>
+        <p class="section-subtitle">Everything you need to know to use VAYU effectively.</p>
+
+        <div class="manual-section">
+
+            <!-- 1. Installation -->
+            <div class="manual-card">
+                <h3><span>1.</span> Installation &amp; Setup</h3>
+                <p><strong>Windows:</strong> Download <code>VAYU.zip</code>, extract anywhere, and double-click <code>start_vayu.bat</code>. The script auto-installs dependencies and launches VAYU.</p>
+                <p><strong>macOS:</strong> Download <code>VAYU_mac.zip</code>, run <code>brew install portaudio</code>, then <code>pip install -r requirements.txt</code>, then double-click <code>start_vayu.command</code>.</p>
+                <p><strong>Requirements:</strong> Python 3.10+, a webcam (for gestures), and an internet connection for AI features.</p>
+            </div>
+
+            <!-- 2. First Run -->
+            <div class="manual-card">
+                <h3><span>2.</span> First Run &amp; API Keys</h3>
+                <p>On first launch, the <strong>Setup Wizard</strong> appears. You'll need at least one AI provider key:</p>
+                <ul>
+                    <li><strong>Google Gemini</strong> (primary) — get a free API key at <code>aistudio.google.com</code></li>
+                    <li><strong>Groq</strong> (fallback) — free key at <code>console.groq.com</code></li>
+                    <li><strong>OpenRouter</strong> (fallback) — key at <code>openrouter.ai</code></li>
+                </ul>
+                <p>Keys are saved locally in <code>config/api_keys.json</code>. You can change them anytime in <strong>Settings</strong>.</p>
+            </div>
+
+            <!-- 3. Modes -->
+            <div class="manual-card">
+                <h3><span>3.</span> Operating Modes</h3>
+                <p>VAYU has three modes switchable via voice, gesture, or the footer dropdown:</p>
+                <div class="manual-grid" style="margin-top:0.75rem;">
+                    <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.08);border-radius:10px;padding:1rem;">
+                        <div style="color:#00d4ff;font-weight:600;font-size:0.9rem;margin-bottom:0.3rem;">🔵 Default</div>
+                        <p style="font-size:0.82rem;margin:0;">Balanced mode with core tools: web search, file ops, system control, media, reminders, and general assistance.</p>
+                    </div>
+                    <div style="background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.08);border-radius:10px;padding:1rem;">
+                        <div style="color:#a78bfa;font-weight:600;font-size:0.9rem;margin-bottom:0.3rem;">🟣 Research</div>
+                        <p style="font-size:0.82rem;margin:0;">Unlocks deep web search, code analysis, file processing, self-coding agent, OpenCode integration, and paper creation.</p>
+                    </div>
+                    <div style="background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.08);border-radius:10px;padding:1rem;">
+                        <div style="color:#34d399;font-weight:600;font-size:0.9rem;margin-bottom:0.3rem;">🟢 Professional</div>
+                        <p style="font-size:0.82rem;margin:0;">Productivity-focused: email, calendar, reminders, system tools, window management, and business workflows.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Voice Interaction -->
+            <div class="manual-card">
+                <h3><span>4.</span> Voice Interaction</h3>
+                <p>VAYU uses <strong>Voice Activity Detection (VAD)</strong> — just speak naturally and VAYU listens when you're talking. No wake word or push-to-talk needed by default.</p>
+                <p><strong>Tips for best results:</strong></p>
+                <ul>
+                    <li>Speak clearly at a normal volume</li>
+                    <li>Use natural language: <em>"What's the weather in Tokyo?"</em>, <em>"Open Spotify and play my playlist"</em></li>
+                    <li>For complex commands, break them into steps</li>
+                    <li>Say <em>"shutdown"</em> or <em>"goodbye"</em> to close VAYU</li>
+                </ul>
+            </div>
+
+            <!-- 5. Hand Gestures -->
+            <div class="manual-card">
+                <h3><span>5.</span> Hand Gesture Reference</h3>
+                <p>Enable the camera (📷 button), then use these gestures:</p>
+                <div class="manual-grid">
+                    <div class="manual-gesture"><span class="gesture-name">✊ Fist</span><span class="gesture-action"><code>mute toggle</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">🖐 Open Palm</span><span class="gesture-action"><code>unmute</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">👍 Thumbs Up</span><span class="gesture-action"><code>next mode</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">✌ Peace</span><span class="gesture-action"><code>prev mode</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">☝ Point Up</span><span class="gesture-action"><code>volume up</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">🤏 Pinch</span><span class="gesture-action"><code>volume down</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">👈 Swipe Left</span><span class="gesture-action"><code>scroll down</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">👉 Swipe Right</span><span class="gesture-action"><code>scroll up</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">📳 Shake</span><span class="gesture-action"><code>alt+tab</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">👌 OK</span><span class="gesture-action"><code>enter</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">3️⃣ Three Fingers</span><span class="gesture-action"><code>show desktop</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">4️⃣ Four Fingers</span><span class="gesture-action"><code>task view</code></span></div>
+                    <div class="manual-gesture"><span class="gesture-name">🤘 Rock On</span><span class="gesture-action"><code>play/pause</code></span></div>
+                </div>
+            </div>
+
+            <!-- 6. Camera & Cursor -->
+            <div class="manual-card">
+                <h3><span>6.</span> Camera &amp; Cursor Control</h3>
+                <p><strong>Camera:</strong> Tap the 📷 button in the right panel. The camera overlay appears at 220×200 with live hand tracking. Gestures activate automatically.</p>
+                <p><strong>Cursor Mode:</strong> With camera on, tap <strong>🖱 CURSOR OFF</strong> to enable. Your index finger moves the mouse with smooth 55% responsiveness. Pinch and release → left click. Peace sign → right click. Tap again to disable.</p>
+                <p><strong>Note:</strong> The camera must be ON before cursor mode can activate. Cursor runs at 30 FPS polling for responsive tracking.</p>
+            </div>
+
+            <!-- 7. Phone Remote Control -->
+            <div class="manual-card">
+                <h3><span>7.</span> Phone Remote Control</h3>
+                <p>Control VAYU from your phone's browser — no app installation needed. Just follow these steps:</p>
+                <div class="manual-step">
+                    <div class="step-num">1</div>
+                    <div class="step-body"><p><strong>Launch VAYU</strong> on your PC — the web server starts automatically on port <code>5050</code>.</p></div>
+                </div>
+                <div class="manual-step">
+                    <div class="step-num">2</div>
+                    <div class="step-body"><p><strong>Check the console output</strong> for the local URL (e.g., <code>http://192.168.1.100:5050</code>). If enabled, a public ngrok tunnel URL is also shown.</p></div>
+                </div>
+                <div class="manual-step">
+                    <div class="step-num">3</div>
+                    <div class="step-body"><p><strong>Open the URL</strong> on your phone's browser (same Wi-Fi for local URL, anywhere for tunnel).</p></div>
+                </div>
+                <div class="manual-step">
+                    <div class="step-num">4</div>
+                    <div class="step-body"><p><strong>Enter the device code</strong> (default: <code>8421</code>, changeable in <code>config/api_keys.json</code>).</p></div>
+                </div>
+                <div class="manual-step">
+                    <div class="step-num">5</div>
+                    <div class="step-body"><p><strong>Control VAYU</strong> — type commands, tap quick-action buttons (Mute, Mode, Vol+, Chrome, Shutdown, Time, Weather), or tap the voice button (green) to speak using your phone's mic.</p></div>
+                </div>
+                <p style="margin-top:0.75rem;padding:0.75rem;background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.08);border-radius:10px;font-size:0.85rem;">
+                    <strong>Note:</strong> The remote control uses an embedded HTTP server (<code>web/web_control.py</code>) with zero external dependencies. All communication stays local unless ngrok tunnel is enabled.
+                </p>
+            </div>
+
+            <!-- 8. Tools -->
+            <div class="manual-card">
+                <h3><span>8.</span> Voice-Controlled Tools</h3>
+                <p>VAYU provides 30+ tools accessible through natural voice commands:</p>
+                <div class="manual-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+                    <div><span class="badge">🌐</span> Web search &amp; browse</div>
+                    <div><span class="badge">📁</span> File read, write, organize</div>
+                    <div><span class="badge">🎵</span> Media playback control</div>
+                    <div><span class="badge">📧</span> Send email &amp; messages</div>
+                    <div><span class="badge">⏰</span> Timers, alarms, reminders</div>
+                    <div><span class="badge">📄</span> Process PDFs, images, docs</div>
+                    <div><span class="badge">🖥️</span> System control &amp; power</div>
+                    <div><span class="badge">📋</span> Clipboard read/write</div>
+                    <div><span class="badge">📱</span> WhatsApp &amp; messaging</div>
+                    <div><span class="badge">🎮</span> Steam &amp; Epic game mgmt</div>
+                    <div><span class="badge">✈️</span> Flight search</div>
+                    <div><span class="badge">📅</span> Calendar &amp; notes</div>
+                    <div><span class="badge">🔌</span> WiFi &amp; Bluetooth</div>
+                    <div><span class="badge">💻</span> Shell commands &amp; admin</div>
+                    <div><span class="badge">🔀</span> Multi-step automation</div>
+                    <div><span class="badge">🧪</span> Code write, run, debug</div>
+                    <div><span class="badge">🔲</span> Window management</div>
+                    <div><span class="badge">📊</span> System info &amp; monitor</div>
+                </div>
+            </div>
+
+            <!-- 9. Keyboard Shortcuts -->
+            <div class="manual-card">
+                <h3><span>9.</span> Keyboard Shortcuts</h3>
+                <div class="manual-grid">
+                    <div class="manual-gesture"><span class="gesture-name">Press <code>Enter</code></span><span class="gesture-action">Send message</span></div>
+                    <div class="manual-gesture"><span class="gesture-name"><code>Shift</code> + <code>Enter</code></span><span class="gesture-action">New line</span></div>
+                    <div class="manual-gesture"><span class="gesture-name"><code>Ctrl+M</code></span><span class="gesture-action">Toggle microphone mute</span></div>
+                    <div class="manual-gesture"><span class="gesture-name"><code>Ctrl+H</code></span><span class="gesture-action">Toggle HUD visibility</span></div>
+                    <div class="manual-gesture"><span class="gesture-name"><code>Ctrl+Q</code></span><span class="gesture-action">Quit VAYU</span></div>
+                </div>
+            </div>
+
+            <!-- 10. Troubleshooting -->
+            <div class="manual-card">
+                <h3><span>10.</span> Tips &amp; Troubleshooting</h3>
+                <ul>
+                    <li><strong>Camera not working?</strong> Make sure no other app (Zoom, OBS) is using the webcam. Restart VAYU.</li>
+                    <li><strong>Gestures not detected?</strong> Ensure good lighting. Avoid covering your hand. Keep your hand within the camera frame.</li>
+                    <li><strong>AI not responding?</strong> Check your API keys in Settings. VAYU falls back through Gemini → OpenRouter → Groq automatically.</li>
+                    <li><strong>Microphone issues?</strong> Check Windows microphone permissions. Try a different input device in Sound settings.</li>
+                    <li><strong>Slow performance?</strong> Close unused apps. Reduce camera resolution in Settings if needed.</li>
+                    <li><strong>Auto-start:</strong> Enable in Settings to launch VAYU minimized to the system tray on Windows boot.</li>
+                    <li><strong>Music control:</strong> VAYU can control Spotify, YouTube Music, VLC, and any media player via media keys.</li>
+                </ul>
+            </div>
+
         </div>
     </div>
 </section>
@@ -2250,6 +2811,7 @@
                 <h4>Product</h4>
                 <a href="#features">Features</a>
                 <a href="#architecture">Architecture</a>
+                <a href="#manual">Manual</a>
                 <a href="#download">Download</a>
             </div>
             <div class="footer-col">
@@ -2270,6 +2832,132 @@
     </div>
 </footer>
 
+<script>
+    // ─── Molecule + Binary Canvas ───
+    (function() {
+        const canvas = document.getElementById('moleculeCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = 380, H = 380;
+        canvas.width = W; canvas.height = H;
+        const cx = W / 2, cy = H / 2;
+
+        const electrons = [
+            { angle: 0, speed: 0.015, radius: 70, tilt: 0.6, size: 4 },
+            { angle: 1.2, speed: -0.022, radius: 95, tilt: -0.8, size: 3 },
+            { angle: 2.8, speed: 0.018, radius: 120, tilt: 0.4, size: 3.5 },
+            { angle: 0.5, speed: -0.025, radius: 145, tilt: -0.5, size: 3 },
+        ];
+
+        const binaryDigits = [];
+        for (let i = 0; i < 60; i++) {
+            binaryDigits.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                speed: 0.2 + Math.random() * 0.5,
+                value: Math.random() > 0.5 ? '1' : '0',
+                opacity: 0.1 + Math.random() * 0.5,
+                size: 7 + Math.random() * 5,
+            });
+        }
+
+        function drawMolecule() {
+            ctx.clearRect(0, 0, W, H);
+
+            // ─── Binary digits ───
+            for (const b of binaryDigits) {
+                b.y += b.speed;
+                if (b.y > H) { b.y = -10; b.x = Math.random() * W; b.value = Math.random() > 0.5 ? '1' : '0'; }
+                const dist = Math.hypot(b.x - cx, b.y - cy);
+                if (dist < 170) {
+                    ctx.globalAlpha = b.opacity * (1 - dist / 200);
+                    ctx.font = `${b.size}px 'JetBrains Mono', monospace`;
+                    ctx.fillStyle = '#00d4ff';
+                    ctx.fillText(b.value, b.x, b.y);
+                }
+            }
+
+            // ─── Orbit rings ───
+            for (const e of electrons) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.scale(1, Math.max(0.15, Math.abs(Math.sin(e.tilt))));
+                ctx.beginPath();
+                ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(0, 212, 255, ${0.08 + Math.abs(Math.sin(e.tilt)) * 0.06})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // ─── Electrons ───
+            for (const e of electrons) {
+                e.angle += e.speed;
+                const ex = cx + Math.cos(e.angle) * e.radius * Math.cos(e.tilt);
+                const ey = cy + Math.sin(e.angle) * e.radius;
+                const grad = ctx.createRadialGradient(ex, ey, 0, ex, ey, e.size * 2);
+                grad.addColorStop(0, 'rgba(0, 212, 255, 0.9)');
+                grad.addColorStop(0.5, 'rgba(0, 212, 255, 0.3)');
+                grad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+                ctx.beginPath();
+                ctx.arc(ex, ey, e.size * 2, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(ex, ey, e.size * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#00d4ff';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // ─── Nucleus glow ───
+            const nucGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 60);
+            nucGrad.addColorStop(0, 'rgba(0, 212, 255, 0.3)');
+            nucGrad.addColorStop(0.3, 'rgba(124, 58, 237, 0.15)');
+            nucGrad.addColorStop(0.6, 'rgba(0, 212, 255, 0.05)');
+            nucGrad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+            ctx.beginPath();
+            ctx.arc(cx, cy, 60, 0, Math.PI * 2);
+            ctx.fillStyle = nucGrad;
+            ctx.fill();
+
+            // ─── Nucleus core ───
+            const coreGrad = ctx.createRadialGradient(cx - 8, cy - 8, 0, cx, cy, 22);
+            coreGrad.addColorStop(0, 'rgba(200, 240, 255, 0.6)');
+            coreGrad.addColorStop(0.4, 'rgba(0, 212, 255, 0.4)');
+            coreGrad.addColorStop(0.8, 'rgba(124, 58, 237, 0.2)');
+            coreGrad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+            ctx.beginPath();
+            ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+            ctx.fillStyle = coreGrad;
+            ctx.fill();
+
+            // add small bright core
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(180, 240, 255, 0.6)';
+            ctx.fill();
+
+            // ─── Connection lines from binary to nucleus ───
+            ctx.globalAlpha = 0.04;
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 0.5;
+            for (const b of binaryDigits) {
+                const dist = Math.hypot(b.x - cx, b.y - cy);
+                if (dist < 160 && dist > 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1;
+
+            requestAnimationFrame(drawMolecule);
+        }
+        drawMolecule();
+    })();
+</script>
 <script>
     // ─── Mobile Toggle ───
     const toggle = document.getElementById('mobileToggle');

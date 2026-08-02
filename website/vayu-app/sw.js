@@ -1,4 +1,4 @@
-const CACHE = 'vayu-v5';
+﻿const CACHE = 'vayu-v6';
 const ASSETS = [
   '/vayu-app/',
   '/vayu-app/index.html',

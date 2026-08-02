@@ -8,6 +8,10 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding='utf-8', errors='replace') if hasattr(sys.stdout, 'reconfigure') else None
 
 import sounddevice as sd
+try:
+    import psutil
+except Exception:
+    psutil = None
 from google import genai
 from google.genai import types
 from vayu_ui import VayuUI
@@ -72,6 +76,17 @@ CHUNK_SIZE          = 1024
 def _get_api_key() -> str:
     with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
         return json.load(f)["gemini_api_key"]
+
+
+def _read_config() -> dict:
+    try:
+        return json.loads(API_CONFIG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _get_groq_key() -> str:
+    return _read_config().get("groq_api_key", "") or ""
 
 
 def _load_system_prompt() -> str:
@@ -871,13 +886,340 @@ class VayuLive:
         self.out_queue      = None
         self._loop          = None
         self._is_speaking   = False
+        self._groq_mode     = False
         self._speaking_lock = threading.Lock()
         self.ui.on_text_command = self._on_text_command
         self.web = WebControlServer(on_command=self._on_web_command)
         self.web.start()
 
+        cfg = _read_config()
+        self.use_groq = bool(cfg.get("use_groq", False))
+        self.cloud = None
+        pair = (cfg.get("cloud_pair") or "").strip()
+        if pair:
+            try:
+                from remote.cloud_link import CloudLink, set_global_link
+                self.cloud = CloudLink(pair, me="laptop", on_tool=self._cloud_on_tool)
+                if self.cloud.start():
+                    set_global_link(self.cloud)
+                    print(f"[CloudLink] ON — internet link ready (pair code set)")
+            except Exception as e:
+                print(f"[CloudLink] ⚠️ {e}")
+
+    async def _dispatch_tool(self, name: str, args: dict) -> str:
+        fc = types.FunctionCall(id="cloud-" + name, name=name, args=args)
+        try:
+            fr = await self._execute_tool(fc)
+            resp = fr.response if isinstance(fr.response, dict) else {}
+            return str(resp.get("result", "Done."))
+        except Exception as e:
+            return f"Tool '{name}' failed: {e}"
+
+    def _cloud_on_tool(self, name: str, args: dict) -> str:
+        """Incoming tool call from the phone over the internet relay."""
+        print(f"[CloudLink] ← phone: {name} {args}")
+        if name.startswith("desktop_"):
+            return self._desktop_tool(name, args)
+        if not self._loop:
+            return "VAYU is starting up, try again in a moment"
+        fut = asyncio.run_coroutine_threadsafe(
+            self._dispatch_tool(name, args), self._loop
+        )
+        try:
+            return fut.result(timeout=120)
+        except Exception as e:
+            return f"Tool '{name}' failed: {e}"
+
+    # ------------------------------------------------------------------
+    # desktop_* tools — executed on THIS laptop when the phone asks via
+    # CloudLink (works over the internet, no same-WiFi needed).
+    # ------------------------------------------------------------------
+    def _desktop_tool(self, name: str, args: dict) -> str:
+        try:
+            if name == "desktop_status":
+                import platform
+                mem = psutil.virtual_memory()
+                info = {
+                    "device": platform.node() or "VAYU Desktop",
+                    "os": platform.system() + " " + platform.release(),
+                    "cpu": f"{psutil.cpu_percent()}%",
+                    "ram": f"{mem.percent}%",
+                }
+                return json.dumps({"ok": True, "result": "VAYU Desktop is online", "info": info})
+
+            if name == "desktop_screenshot":
+                import mss, tempfile, os
+                with mss.mss() as sct:
+                    shot = sct.grab(sct.monitors[1])
+                png = mss.tools.to_png(shot.rgb, shot.size)
+                path = os.path.join(tempfile.gettempdir(), "vayu_screen.png")
+                with open(path, "wb") as f:
+                    f.write(png)
+                return json.dumps({"ok": True, "result": "Screenshot saved", "path": path, "size": len(png)})
+
+            if name == "desktop_mouse":
+                import pyautogui
+                pyautogui.moveRel(int(args.get("dx", 0)), int(args.get("dy", 0)), duration=0.1)
+                return json.dumps({"ok": True, "result": "Mouse moved"})
+
+            if name == "desktop_click":
+                import pyautogui
+                pyautogui.click(button=args.get("button", "left"), clicks=int(args.get("clicks", 1)))
+                return json.dumps({"ok": True, "result": "Clicked"})
+
+            if name == "desktop_type":
+                import pyperclip, pyautogui
+                text = args.get("text", "")
+                if text:
+                    pyperclip.copy(text)
+                    pyautogui.hotkey("ctrl", "v")
+                return json.dumps({"ok": True, "result": "Typed"})
+
+            if name == "desktop_volume":
+                return self._set_desktop_volume(int(args.get("level", 0)))
+
+            if name == "desktop_apps":
+                import pygetwindow as gw
+                wins = [w.title for w in gw.getAllWindows() if w.title.strip()]
+                return json.dumps({"ok": True, "result": "Windows listed", "windows": wins[:50]})
+
+            if name == "desktop_focus":
+                import pygetwindow as gw
+                title = args.get("window", "")
+                wins = gw.getWindowsWithTitle(title)
+                if wins:
+                    wins[0].activate()
+                    return json.dumps({"ok": True, "result": f"Focused: {title}"})
+                return json.dumps({"ok": False, "error": "Window not found: " + title})
+
+            if name == "desktop_files":
+                import os
+                path = args.get("path") or os.path.expanduser("~")
+                if os.path.isdir(path):
+                    return json.dumps({"ok": True, "result": "Listed", "path": path,
+                                       "items": os.listdir(path)[:100]})
+                return json.dumps({"ok": False, "error": "Not a directory: " + path})
+
+            if name == "desktop_command":
+                import subprocess
+                text = (args.get("text") or "").strip()
+                if not text:
+                    return json.dumps({"ok": False, "error": "No command given"})
+                r = subprocess.run(text, shell=True, capture_output=True, text=True, timeout=60)
+                out = (r.stdout or "")[-2000:] or "Command done"
+                return json.dumps({"ok": True, "result": out})
+
+            return json.dumps({"ok": False, "error": f"Unknown desktop tool: {name}"})
+        except Exception as e:
+            return json.dumps({"ok": False, "error": str(e)})
+
+    def _set_desktop_volume(self, level: int):
+        try:
+            from ctypes import cast, POINTER
+            from comtypes import CLSCTX_ALL
+            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            volume.SetMasterVolumeLevelScalar(max(0, min(100, level)) / 100.0, None)
+            return json.dumps({"ok": True, "result": f"Volume set to {level}%"})
+        except Exception as e:
+            return json.dumps({"ok": False, "error": f"Volume: {e}"})
+
+    # ------------------------------------------------------------------
+    # GROQ MODE — full voice assistant without a Gemini key.
+    # Mic phrase → Groq Whisper STT → Groq chat (with all tools) → SAPI TTS.
+    # ------------------------------------------------------------------
+    GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
+    GROQ_STT_URL  = "https://api.groq.com/openai/v1/audio/transcriptions"
+
+    def _groq_tools(self):
+        tools = []
+        for d in TOOL_DECLARATIONS:
+            for fn in d.get("function_declarations", []):
+                tools.append({
+                    "type": "function",
+                    "function": {
+                        "name": fn.get("name"),
+                        "description": fn.get("description", ""),
+                        "parameters": fn.get("parameters"),
+                    },
+                })
+        return tools
+
+    async def run_groq(self):
+        print("[VAYU] 🎙️ GROQ MODE active (no Gemini key required)")
+        self._groq_mode = True
+        self._loop = asyncio.get_event_loop()
+        self.ui.set_state("LISTENING")
+        self.web.set_state("LISTENING")
+        self.ui.write_log("SYS: GROQ MODE — voice control online (no Gemini).")
+        while True:
+            if self.ui.muted:
+                await asyncio.sleep(0.5)
+                continue
+            try:
+                wav = await asyncio.to_thread(self._record_phrase)
+                if not wav:
+                    continue
+                text = await asyncio.to_thread(self._groq_stt, wav)
+                text = (text or "").strip()
+                if not text:
+                    continue
+                print(f"[VAYU] You: {text}")
+                self.ui.write_log(f"You: {text}")
+                self.web.add_log("user", text)
+                add_entry("user", text)
+                reply = await self._groq_chat(text)
+                if reply:
+                    print(f"[VAYU] Vayu: {reply}")
+                    self.ui.write_log(f"Vayu: {reply}")
+                    self.web.add_log("vayu", reply)
+                    add_entry("vayu", reply)
+                    play_listening()
+                    self.set_speaking(True)
+                    await asyncio.to_thread(self._groq_tts, reply)
+                    self.set_speaking(False)
+                    threading.Thread(target=_update_memory_async,
+                                     args=(text, reply), daemon=True).start()
+            except Exception as e:
+                print(f"[VAYU] ⚠️ Groq loop: {e}")
+                await asyncio.sleep(1)
+
+    def _record_phrase(self, sr=16000, max_sec=15, silence_sec=0.9):
+        import io as _io
+        import time
+        import wave
+        import numpy as np
+        frames, started, quiet = [], False, 0
+        stopped = False
+        deadline = time.time() + max_sec
+
+        def cb(indata, frames_t, time_info, status):
+            nonlocal started, quiet, stopped
+            vol = float(np.sqrt(np.mean(indata.astype(np.float32) ** 2)))
+            if vol < 0.012:
+                if started:
+                    quiet += 1
+                    if quiet >= int(silence_sec * 50) or time.time() > deadline:
+                        stopped = True
+                        raise sd.CallbackStop()
+            else:
+                started, quiet = True, 0
+                frames.append(indata.copy())
+
+        try:
+            with sd.InputStream(samplerate=sr, channels=1, dtype="int16",
+                                blocksize=int(sr / 50), callback=cb):
+                while not stopped:
+                    time.sleep(0.05)
+        except sd.CallbackStop:
+            pass
+        except Exception as e:
+            print(f"[VAYU] 🎤 Mic: {e}")
+            return None
+        if not started or not frames:
+            return None
+        buf = _io.BytesIO()
+        wf = wave.open(buf, "wb")
+        wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(sr)
+        for f in frames:
+            wf.writeframes(f.tobytes())
+        wf.close()
+        return buf.getvalue()
+
+    def _groq_stt(self, wav_bytes):
+        key = _get_groq_key()
+        if not key:
+            return ""
+        r = requests.post(
+            self.GROQ_STT_URL,
+            headers={"Authorization": "Bearer " + key},
+            files={"file": ("voice.wav", wav_bytes, "audio/wav")},
+            data={"model": "distil-whisper-large-v3-en", "language": "en"},
+            timeout=60,
+        )
+        if r.status_code != 200:
+            print(f"[VAYU] ⚠️ STT {r.status_code}: {r.text[:120]}")
+            return ""
+        return r.json().get("text", "")
+
+    async def _groq_chat(self, text: str) -> str:
+        key = _get_groq_key()
+        if not key:
+            return "I need a Groq API key, sir — add it in Settings → Groq."
+        msgs = [
+            {"role": "system", "content": _load_system_prompt()
+             + "\n\nYou are VAYU on the user's desktop. Use tools when asked. After a tool, confirm in ONE short sentence in character — never just 'Done'."},
+            {"role": "user", "content": text},
+        ]
+        for _ in range(6):
+            body = {"model": "llama-3.3-70b-versatile", "messages": msgs,
+                    "temperature": 0.7, "max_tokens": 1024}
+            body["tools"] = self._groq_tools()
+            try:
+                r = await asyncio.to_thread(
+                    lambda: requests.post(self.GROQ_CHAT_URL,
+                                          headers={"Authorization": "Bearer " + key},
+                                          json=body, timeout=90))
+            except Exception as e:
+                return f"I could not reach Groq, sir: {e}"
+            if r.status_code != 200:
+                return f"Groq error {r.status_code}: {r.text[:120]}"
+            data = r.json()
+            msg = data["choices"][0]["message"]
+            if msg.get("tool_calls"):
+                msgs.append({"role": "assistant", "content": msg.get("content") or None,
+                             "tool_calls": msg["tool_calls"]})
+                for tc in msg["tool_calls"]:
+                    fn = tc["function"]
+                    name = fn.get("name", "")
+                    try:
+                        args = json.loads(fn.get("arguments") or "{}")
+                    except Exception:
+                        args = {}
+                    result = await self._dispatch_tool(name, args)
+                    msgs.append({"role": "tool", "tool_call_id": tc.get("id"),
+                                 "content": str(result)})
+                continue
+            return (msg.get("content") or "").strip() or "Done, sir."
+        return "I'm having trouble completing that, sir."
+
+    async def _groq_chat_and_speak(self, text: str):
+        try:
+            self.ui.write_log(f"You: {text}")
+            self.web.add_log("user", text)
+            add_entry("user", text)
+            reply = await self._groq_chat(text)
+            self.ui.write_log(f"Vayu: {reply}")
+            self.web.add_log("vayu", reply)
+            add_entry("vayu", reply)
+            if reply and not self.ui.muted:
+                self.set_speaking(True)
+                await asyncio.to_thread(self._groq_tts, reply)
+                self.set_speaking(False)
+        except Exception as e:
+            print(f"[VAYU] ⚠️ text cmd: {e}")
+
+    def _groq_tts(self, text: str):
+        t = text.replace("'", "''")
+        ps = ("Add-Type -AssemblyName System.Speech; "
+              "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+              "$s.Rate = 0; $s.Speak('" + t + "')")
+        try:
+            import subprocess
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                           timeout=180, capture_output=True)
+        except Exception as e:
+            print(f"[VAYU] 🔊 TTS: {e}")
+
     def _on_text_command(self, text: str):
-        if not self._loop or not self.session:
+        if not self._loop:
+            return
+        if self._groq_mode:
+            asyncio.run_coroutine_threadsafe(self._groq_chat_and_speak(text), self._loop)
+            return
+        if not self.session:
             return
         asyncio.run_coroutine_threadsafe(
             self.session.send_client_content(
@@ -1263,8 +1605,18 @@ class VayuLive:
             stream.close()
 
     async def run(self):
+        gemini_key = ""
+        try:
+            gemini_key = _get_api_key()
+        except Exception:
+            pass
+        if self.use_groq or not gemini_key:
+            print("[VAYU] GROQ MODE selected (no Gemini key) — voice pipeline with Groq.")
+            await self.run_groq()
+            return
+
         client = genai.Client(
-            api_key=_get_api_key(),
+            api_key=gemini_key,
             http_options={"api_version": "v1beta"}
         )
 
@@ -1299,11 +1651,14 @@ class VayuLive:
                 print(f"[VAYU] ⚠️ {e}")
                 msg = str(e)
                 if "invalid authentication" in msg or "UNAUTHENTICATED" in msg:
-                    print("[VAYU] ❌ GEMINI API KEY REJECTED — your saved Gemini key is invalid or expired.")
-                    print("[VAYU]    Fix: Settings (◈) → paste a fresh key from https://aistudio.google.com/apikey → SAVE, then restart VAYU.")
+                    print("[VAYU] ❌ GEMINI API KEY REJECTED — switching to GROQ MODE.")
+                    print("[VAYU]    (Tip: add a fresh Gemini key in Settings to use Gemini Live again.)")
                     self.ui.set_state("ERROR")
                     self.web.set_state("ERROR")
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(1)
+                    self.ui.write_log("SYS: Gemini rejected — falling back to GROQ MODE.")
+                    await self.run_groq()
+                    return
                 else:
                     traceback.print_exc()
 
