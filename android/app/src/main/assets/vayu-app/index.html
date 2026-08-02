@@ -340,12 +340,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="set-row"><label>Cloud link</label><div class="toggle" id="setCloudLink" onclick="togglePref('cloudlink')"></div></div>
     <div class="set-note" id="cloudLinkInfo" style="margin-left:0">OFF — laptop and phone only talk on the same WiFi.</div>
 
+    <div class="sec-title">VEDA LINK (DEVICE CLOUD)</div>
+    <div class="set-row"><label>Relay</label><input type="text" id="setVedaRelay" placeholder="172.16.137.216:8080" autocapitalize="off" spellcheck="false"></div>
+    <div class="set-note">Your VEDA relay host:port (laptop running the relay + agent). Phone controls the laptop over it.</div>
+    <div class="set-row"><label>Relay token</label><input type="text" id="setVedaToken" placeholder="vayu-dev" autocapitalize="off" spellcheck="false"></div>
+    <div class="set-note">Claim token the relay was started with (default: vayu-dev).</div>
+    <div class="set-row"><label>VEDA link</label><div class="toggle" id="setVedaLink" onclick="togglePref('vedalink')"></div></div>
+    <div class="set-note" id="vedaLinkInfo" style="margin-left:0">OFF — laptop &amp; phone link through the VEDA relay.</div>
+
     <div style="height:14px"></div>
     <button class="btn full" onclick="saveSettings()">💾 SAVE SETTINGS</button>
     <div style="height:8px"></div>
     <button class="btn danger full" onclick="resetApp()">⚠ FACTORY RESET</button>
     <div style="height:14px"></div>
-    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.4.0 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
+    <div style="text-align:center;font-size:9px;color:var(--text-dim);font-family:Consolas,monospace">VAYU v1.4.1 · Jarvis Edition · Groq · Purvesh Nilesh Bhadale</div>
   </div>
 </div>
 
@@ -355,7 +363,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="overlay upd-overlay" id="ov-update">
   <div class="upd-box">
     <span class="upd-tag">NEW UPDATE</span>
-    <h2>VAYU <span class="upd-ver">1.4.0</span> — Jarvis Edition</h2>
+    <h2>VAYU <span class="upd-ver">1.4.1</span> — Jarvis Edition</h2>
     <div class="upd-sub">What's new, sir:</div>
     <ul class="upd-list">
       <li><b>CLOUD LINK — control from anywhere</b> — pair your phone and laptop with one code and control each other over the internet (no same-WiFi needed).</li>
@@ -459,6 +467,7 @@ async function desktopApi(path,opts){
   return res;
 }
 async function execDesktopTool(name,args){
+  if(vedaOn&&vedaRelay.trim()) return execVedaDesktop(name,args);
   if(cloudLinkOn&&cloudCode&&cloudCode.trim()) return execCloudDesktop(name,args);
   try{
     let r;
@@ -583,6 +592,97 @@ async function execCloudDesktop(name,args){
   }
 }
 
+/* =====================================================================
+   VEDA Link — control the laptop through the VEDA device-cloud relay
+   (the new architecture: phone → relay → laptop agent, consent-gated)
+   ===================================================================== */
+function vedaUrl(){
+  const h=(vedaRelay||'').trim();
+  if(!h) return '';
+  return h.indexOf('://')>=0?h:('ws://'+h);
+}
+function vedaConnect(){
+  const url=vedaUrl();
+  if(!url||!vedaOn){ return; }
+  if(vedaWs&&(vedaWs.readyState===0||vedaWs.readyState===1)) return;
+  try{
+    vedaWs=new WebSocket(url+'?kind=dashboard');
+    vedaWs.onopen=()=>{
+      vedaConnected=true; vedaRetry=0;
+      vedaWs.send(JSON.stringify({v:1,type:'hello',from:'phone',to:'relay',body:{
+        token:vedaTokenPref||'vayu-dev',
+        device:{id:'phone-'+Math.floor(Math.random()*1e9),name:'VAYU Phone',platform:'android',
+                capabilities:['apps.open','system.lock','system.restart','system.shutdown','media.master','notify.send','terminal']}
+      }}));
+      writeLog('sys','VEDA LINK CONNECTED — device cloud live');
+      const el=document.getElementById('vedaLinkInfo');
+      if(el) el.innerHTML='<b style="color:var(--green)">ON</b> — connected to relay <b style="color:var(--pri)">'+escapeHtml((vedaRelay||'').trim())+'</b>. Phone can control the laptop now.';
+    };
+    vedaWs.onmessage=(ev)=>{
+      try{
+        const m=typeof ev.data==='string'?JSON.parse(ev.data):ev.data;
+        const t=m.body||{};
+        if(m.type==='hello.ack'||m.type==='presence'){
+          const list=m.type==='hello.ack'?(t.devices||[]):(t.devices||[]);
+          vedaDevices.length=0;
+          (list||[]).forEach(d=>{ if(d.id&&d.id!=='dashboard') vedaDevices.push(d); });
+          const el=document.getElementById('vedaLinkInfo');
+          if(el&&vedaOn) el.innerHTML='<b style="color:var(--green)">ON</b> — '+vedaDevices.length+' device(s) on the cloud: <b style="color:var(--pri)">'+escapeHtml(vedaDevices.map(d=>d.name).join(', ')||'none')+'</b>.';
+          return;
+        }
+        if(m.type==='control.result'){
+          const cb=vedaPending[m.body&&m.body.controlId];
+          if(cb){ delete vedaPending[m.body.controlId]; cb(m.body); }
+          return;
+        }
+      }catch(e){ console.log('veda msg',e); }
+    };
+    vedaWs.onclose=()=>{
+      vedaConnected=false; vedaWs=null;
+      if(vedaOn&&vedaRelay.trim()){
+        vedaRetry=Math.min(vedaRetry+1,10);
+        setTimeout(vedaConnect,3000*vedaRetry);
+      }
+    };
+    vedaWs.onerror=()=>{ try{ vedaWs.close(); }catch(e){} };
+  }catch(e){ console.log('veda ws',e); }
+}
+function vedaSend(type,to,body){
+  if(vedaWs&&vedaWs.readyState===1) vedaWs.send(JSON.stringify({v:1,type,from:'phone',to,body}));
+}
+function vedaControl(action,args,timeout){
+  return new Promise(resolve=>{
+    if(!vedaConnected){ resolve({ok:false,error:'VEDA relay not connected'}); return; }
+    const id='phone-'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+    const target=vedaTargetId();
+    if(!target){ resolve({ok:false,error:'No laptop device on the relay'}); return; }
+    vedaPending[id]=r=>resolve({ok:r.ok,error:r.error||'',data:r.data||''});
+    vedaSend('control.request',target,{controlId:id,action,args:args||{},permission:'granted'});
+    setTimeout(()=>{ if(vedaPending[id]){ delete vedaPending[id]; resolve({ok:false,error:'No answer from laptop (timeout)'}); } },timeout||45000);
+  });
+}
+async function execVedaDesktop(name,args){
+  try{
+    const map={
+      desktop_status: ()=>Promise.resolve({ok:true,data:'VEDA relay: '+vedaDevices.length+' device(s) — '+vedaDevices.map(d=>d.name).join(', ')}),
+      desktop_volume: ()=>vedaControl('set_volume',{volume:Number(args.level||args.volume||50)}),
+      desktop_command: ()=>vedaControl('run_command',{command:String(args.text||'')}),
+      desktop_screenshot: ()=>Promise.resolve({ok:false,error:'Screenshot not in VEDA yet — use Remote Link'}),
+    };
+    if(!map[name]) return '{"ok":false,"error":"VEDA does not support '+name+'"}';
+    const r=await map[name]();
+    if(!r.ok) return '{"ok":false,"error":"Laptop via VEDA: '+String(r.error||'failed').slice(0,120)+'"}';
+    return '{"ok":true,"result":'+JSON.stringify(String(r.data||'Done.').slice(0,300))+'}';
+  }catch(e){
+    return '{"ok":false,"error":"VEDA control error: '+String(e).slice(0,100)+'"}';
+  }
+}
+function vedaStart(){
+  cloudWs=null;
+  if(!vedaOn){ if(vedaWs){ try{vedaWs.close();}catch(e){} } vedaWs=null; vedaConnected=false; return; }
+  vedaConnect();
+}
+
 /* ---------------- state ---------------- */
 let provider='groq';
 let genAI=null;
@@ -605,6 +705,16 @@ let desktopHost=loadPref('desktop','');
 let desktopPin=loadPref('deskpin','8421');
 let desktopToken='';
 let phoneLinkOn=loadPref('phonelink',true);
+
+/* VEDA relay connection (phone ⇄ laptop via the device cloud)
+   State lives here so tools + settings can share it. */
+let vedaRelay=loadPref('vedarelay','');
+let vedaTokenPref=loadPref('vedatoken','vayu-dev');
+let vedaOn=loadPref('vedalink',false);
+let vedaWs=null, vedaConnected=false, vedaTarget='', vedaRetry=0;
+const vedaPending={};
+const vedaDevices=[];
+function vedaTargetId(){ return vedaTarget||(vedaDevices.length?vedaDevices[0].id:''); }
 
 const chatEl=document.getElementById('chat');
 const statusDot=document.getElementById('statusDot');
@@ -1484,12 +1594,20 @@ function renderSettings(){
   if(cli) cli.innerHTML=(cloudLinkOn&&cloudCode&&cloudCode.trim())
     ?'<b style="color:var(--green)">ON</b> — connected through the internet relay (works anywhere).<br><span style="font-size:9px">Same pair code is set in VAYU Desktop → Settings → Cloud Link. Desktop tools now go over the internet.</span>'
     :'<b style="color:var(--red)">OFF</b> — laptop and phone only talk on the same WiFi.';
+  document.getElementById('setVedaRelay').value=vedaRelay;
+  document.getElementById('setVedaToken').value=vedaTokenPref;
+  document.getElementById('setVedaLink').className='toggle'+(vedaOn?' on':'');
+  const vi=document.getElementById('vedaLinkInfo');
+  if(vi) vi.innerHTML=vedaOn&&vedaRelay.trim()
+    ?(vedaConnected?'<b style="color:var(--green)">ON</b> — connected to relay <b style="color:var(--pri)">'+escapeHtml(vedaRelay.trim())+'</b>.'+(vedaDevices.length?' Devices: '+escapeHtml(vedaDevices.map(d=>d.name).join(', ')):'')
+      :'<b style="color:var(--acc2)">ON</b> — connecting to <b style="color:var(--pri)">'+escapeHtml(vedaRelay.trim())+'</b>…')
+    :'<b style="color:var(--red)">OFF</b> — phone controls the laptop through the VEDA relay.';
   const si=document.getElementById('sysInfo');
-  si.innerHTML='<b>VAYU v1.4.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
+  si.innerHTML='<b>VAYU v1.4.1</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>Loading system data…';
   if(NATIVE){ try{ NATIVE.getSysInfo(); }catch(e){} }
   else{
     const mem=loadMemory();
-    si.innerHTML='<b>VAYU v1.4.0</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
+    si.innerHTML='<b>VAYU v1.4.1</b><br><span style="color:var(--text-dim)">Jarvis Edition · Groq · '+currentMode.toUpperCase()+' MODE</span><br>WEB PWA · Memory: '+mem.length+' facts';
   }
 }
 let phoneLinkInfoAddr='';
@@ -1523,6 +1641,13 @@ function togglePref(k){
     renderSettings();
     showToast('Cloud link '+(cloudLinkOn?'ON':'OFF')+(cloudLinkOn&&!cloudCode?' (set a pair code first)':''));
   }
+  if(k==='vedalink'){
+    vedaOn=!vedaOn;
+    savePref('vedalink',vedaOn);
+    vedaStart();
+    renderSettings();
+    showToast('VEDA link '+(vedaOn?'ON':'OFF'));
+  }
 }
 function setRate(v){ savePref('rate',parseFloat(v)); if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(v)); }catch(e){} } }
 function saveSettings(){
@@ -1544,6 +1669,16 @@ function saveSettings(){
     savePref('cloudcode',cloudCode);
     if(cloudWs){ try{ cloudWs.close(); }catch(e){} cloudWs=null; }
     if(cloudLinkOn&&cloudCode){ cloudPrepare().then(()=>cloudConnect()); }
+  }
+  const newRelay=document.getElementById('setVedaRelay').value.trim();
+  const newToken=document.getElementById('setVedaToken').value.trim();
+  if(newRelay!==vedaRelay||newToken!==vedaTokenPref){
+    vedaRelay=newRelay;
+    vedaTokenPref=newToken||'vayu-dev';
+    savePref('vedarelay',vedaRelay);
+    savePref('vedatoken',vedaTokenPref);
+    if(vedaWs){ try{ vedaWs.close(); }catch(e){} vedaWs=null; vedaConnected=false; }
+    if(vedaOn&&vedaRelay){ vedaConnect(); }
   }
   writeLog('sys','Settings saved.');
   showToast('Settings saved');
@@ -1624,18 +1759,19 @@ function initVayu(){
   document.getElementById('splash').className='splash hidden';
   document.getElementById('apiSetup').className='api-setup';
   document.getElementById('app').className='show';
-  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.4.0');
+  writeLog('sys','VAYU initialised. GROQ.LINK ACTIVE. v1.4.1');
   writeLog('sys','Mode: '+currentMode.toUpperCase()+'. Model: '+modelChoice);
   if(cloudLinkOn&&cloudCode&&cloudCode.trim()){ cloudPrepare().then(()=>cloudConnect()); }
+  if(vedaOn&&vedaRelay.trim()){ vedaConnect(); }
   if(NATIVE){ try{ NATIVE.setVoiceRate(parseFloat(loadPref('rate',0.85))); NATIVE.setWakeWord(wakeOn); NATIVE.getSysInfo(); }catch(e){} }
   maybeShowUpdate();
 }
 function maybeShowUpdate(){
-  try{ if(localStorage.getItem('vayu_seen_update')==='1.4.0') return; }catch(e){}
+  try{ if(localStorage.getItem('vayu_seen_update')==='1.4.1') return; }catch(e){}
   setTimeout(()=>{ document.getElementById('ov-update').className='overlay upd-overlay show'; },1500);
 }
 function dismissUpdate(){
-  try{ localStorage.setItem('vayu_seen_update','1.4.0'); }catch(e){}
+  try{ localStorage.setItem('vayu_seen_update','1.4.1'); }catch(e){}
   document.getElementById('ov-update').className='overlay upd-overlay';
 }
 function saveConv(){

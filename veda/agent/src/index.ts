@@ -87,7 +87,7 @@ export class Agent {
     if (CRITICAL_ACTIONS.has(r.action) && r.consent !== 'granted') {
       const ok = await pl.userConfirm(`${from} wants to ${r.action.toUpperCase()} ${hostname()}.\nPermit?`, r.action);
       if (!ok) {
-        this.send(env(Msg.ControlResult, '', { controlId: r.controlId, ok: false, error: 'denied by user' }));
+        this.send(env(Msg.ControlResult, from, { controlId: r.controlId, ok: false, error: 'denied by user' }));
         audit('denied', { controlId: r.controlId, action: r.action, from });
         return;
       }
@@ -95,9 +95,9 @@ export class Agent {
     audit('action', { controlId: r.controlId, action: r.action, from });
     try {
       const out = await this.execute(r.action, r.args || {});
-      this.send(env(Msg.ControlResult, '', { controlId: r.controlId, ok: true, data: out || undefined }));
+      this.send(env(Msg.ControlResult, from, { controlId: r.controlId, ok: true, data: out || undefined }));
     } catch (err: any) {
-      this.send(env(Msg.ControlResult, '', { controlId: r.controlId, ok: false, error: String(err?.message || err) }));
+      this.send(env(Msg.ControlResult, from, { controlId: r.controlId, ok: false, error: String(err?.message || err) }));
     }
   }
 
@@ -124,13 +124,14 @@ export class Agent {
 }
 
 // Simple default-export + CLI entry, so the binary can be run directly.
-if (import.meta.url === process.argv[1]) {
+if (process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'))) {
   const relay = process.env.VEDA_RELAY || 'ws://127.0.0.1';
   const token = process.env.VEDA_TOKEN || 'vayu-dev';
   const port = Number(process.env.VEDA_PORT || 8080);
   const agent = new Agent({
     relay,
     token,
+    port,
     device: {
       id: `host-${hostname().replace(/[^a-zA-Z0-9]/gi, '-').toLowerCase()}`,
       name: hostname(),

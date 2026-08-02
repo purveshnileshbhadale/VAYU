@@ -3,13 +3,14 @@
 import WebSocket from 'ws';
 import { randomUUID } from 'node:crypto';
 
-const URL = process.env.VEDA_RELAY_URL || 'ws://127.0.0.1:8080/ws';
+const URL = process.env.VEDA_RELAY_URL || 'ws://127.0.0.1:8080';
 const TOKEN = process.env.VEDA_TOKEN || 'vayu-dev';
 
 interface Peer {
   id: string;
   ws: WebSocket;
   inbox: any[];
+  send: (type: string, top: string, body: any, from?: string) => void;
 }
 
 function connect(kind: 'device' | 'dashboard', id: string): Promise<Peer> {
@@ -22,6 +23,11 @@ function connect(kind: 'device' | 'dashboard', id: string): Promise<Peer> {
     ws.on('open', () => resolve({ id, ws, inbox, send } as unknown as Peer));
     ws.on('error', reject);
   });
+}
+
+/** Like the real TS/Python agent: reply control.result back to the requester (e.from). */
+function agentReply(p: Peer, e: any, ok: boolean, data?: string) {
+  p.send('control.result', e.from || '', { controlId: e.body?.controlId, ok, data });
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -68,8 +74,8 @@ export async function main() {
   if (!ctl) throw new Error('control not forwarded after consent');
   console.log('OK consent gate -> control forwarded to phone', ctl.body.action);
 
-  // 3) control result back to dashboard
-  phone.send('control.result', 'dashboard', { controlId, ok: true, data: 'restarting' });
+  // 3) control result back to dashboard (agent echo-back semantics)
+  agentReply(phone, ctl, true, 'restarting');
   await sleep(300);
   const res = dash.inbox.find((m) => m.type === 'control.result');
   if (!res || !res.body?.ok) throw new Error('control.result missing');

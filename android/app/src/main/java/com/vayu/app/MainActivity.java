@@ -824,7 +824,11 @@ public class MainActivity extends AppCompatActivity {
             int curVer = appVersionCode();
             if (curVer <= lastVer) return;
             prefs.edit().putInt("last_version", curVer).apply();
-            if (curVer >= 6) {
+            if (curVer >= 7) {
+                notify("VAYU 1.4.1 — VEDA Link",
+                        "Control your laptop through the VEDA device cloud: Settings → VEDA Link (relay + token). Desktop tools now route via the consent-gated VEDA relay.",
+                        3001);
+            } else if (curVer >= 6) {
                 notify("VAYU 1.4.0 — Cloud Link",
                         "Control your laptop & phone from anywhere over the internet (pair code), desktop Groq mode (no Gemini key), plus app-opening fixes.",
                         3001);
@@ -848,7 +852,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {
-            return "1.4.0";
+            return "1.4.1";
         }
     }
 
