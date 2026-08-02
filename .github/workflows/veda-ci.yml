@@ -1,0 +1,68 @@
+name: veda-ci
+
+on:
+  push:
+    paths:
+      - 'veda/**'
+  pull_request:
+    paths:
+      - 'veda/**'
+  workflow_dispatch:
+
+jobs:
+  relay-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: veda/relay-go/go.sum
+      - name: Build relay
+        working-directory: veda/relay-go
+        run: go build ./...
+      - name: Vet
+        working-directory: veda/relay-go
+        run: go vet ./...
+      - name: Test
+        working-directory: veda/relay-go
+        run: go test ./...
+
+  agent-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Protocol typecheck
+        run: cd veda/relay-node && npm install --no-audit --no-fund && npx tsc --noEmit && cd ../agent && npm install --no-audit --no-fund && npx tsc --noEmit
+      - name: Dashboard build
+        working-directory: veda/dashboard
+        run: npm install --no-audit --no-fund && npm run build
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs: [relay-go, agent-dashboard]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: veda/relay-go/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install relay-node deps
+        working-directory: veda/relay-node
+        run: npm install --no-audit --no-fund
+      - name: Start Go relay
+        working-directory: veda/relay-go
+        run: |
+          go build -o /tmp/veda-relay ./cmd/veda-relay
+          /tmp/veda-relay --listen=:8080 --token=vayu-dev --audit=/tmp/veda-audit &
+      - name: Wait for relay health
+        run: npx --yes wait-on http://127.0.0.1:8080/healthz
+      - name: Run smoke
+        working-directory: veda/relay-node
+        run: npx tsx src/smoke.ts
