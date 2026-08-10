@@ -1478,6 +1478,116 @@
         .fade-in-d4 { transition-delay: 0.4s; }
         .fade-in-d5 { transition-delay: 0.5s; }
 
+        /* ─── Roadmap ─── */
+        .rm-pillar-head {
+            display: flex;
+            align-items: baseline;
+            gap: 1.25rem;
+            margin: 3.5rem 0 1.5rem;
+        }
+        .rm-pillar-head:first-of-type { margin-top: 0.5rem; }
+        .rm-pillar-num {
+            font-size: 2.75rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(135deg, var(--accent-light), var(--purple-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            opacity: 0.5;
+            line-height: 1;
+        }
+        .rm-pillar-head h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.3px;
+            margin-bottom: 0.3rem;
+        }
+        .rm-pillar-head p {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            max-width: 560px;
+        }
+
+        details.rm-card summary {
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        details.rm-card summary::-webkit-details-marker { display: none; }
+        details.rm-card summary h3 { margin: 0; flex: 1; }
+        .rm-chevron {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,212,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00d4ff;
+            font-size: 0.95rem;
+            transition: transform 0.25s;
+        }
+        details.rm-card[open] .rm-chevron { transform: rotate(45deg); }
+        details.rm-card .rm-body {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        details.rm-card .rm-body > *:first-child { margin-top: 0; }
+
+        .code-block {
+            background: rgba(0,212,255,0.04);
+            border: 1px solid rgba(0,212,255,0.1);
+            border-radius: var(--radius-sm);
+            padding: 1rem 1.25rem;
+            overflow-x: auto;
+            margin: 0.85rem 0;
+        }
+        .code-block pre { margin: 0; }
+        .code-block code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            white-space: pre;
+            line-height: 1.65;
+        }
+        .code-block .k { color: #60a5fa; }
+        .code-block .s { color: #34d399; }
+        .code-block .cm { color: var(--text-muted); font-style: italic; }
+
+        .rm-table-wrap {
+            overflow-x: auto;
+            margin: 0.85rem 0;
+        }
+        .rm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.83rem;
+            min-width: 560px;
+        }
+        .rm-table th, .rm-table td {
+            text-align: left;
+            padding: 0.65rem 0.9rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .rm-table th {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.6px;
+            font-weight: 600;
+        }
+        .rm-table td { color: var(--text-secondary); }
+        .rm-table td:first-child { color: #fff; font-weight: 500; }
+        .rm-table tr:last-child td { border-bottom: none; }
+
     </style>
 </head>
 <body>
@@ -1509,6 +1619,7 @@
             <a href="#features">Features</a>
             <a href="#architecture">Architecture</a>
             <a href="#manual">Manual</a>
+            <a href="#roadmap">Roadmap</a>
             <a href="#creator">Creator</a>
             <a href="#download" class="nav-cta">Download</a>
         </div>
@@ -2754,6 +2865,344 @@
     </div>
 </section>
 
+<!-- ─── Roadmap ─── -->
+<section id="roadmap">
+    <div class="container">
+        <span class="section-label" style="display:block;text-align:center;">Engineering Roadmap</span>
+        <h2 class="section-title">Stability, VEDA &amp; the Next UI</h2>
+        <p class="section-subtitle">
+            An honest audit of where the APK, the cross-device engine, and the interface stand today —
+            and the concrete plan to take each one further. Every item below is scoped against the
+            actual codebase, not a generic checklist.
+        </p>
+
+        <div class="tech-grid">
+            <div class="tech-item"><div class="tech-name">WebView + Java shell</div><div class="tech-use">Android runtime today</div></div>
+            <div class="tech-item"><div class="tech-name">0 wired</div><div class="tech-use">Crash reports today</div></div>
+            <div class="tech-item"><div class="tech-name">3 parallel paths</div><div class="tech-use">cloud_link · phone_link · VEDA</div></div>
+            <div class="tech-item"><div class="tech-name">files &amp; clipboard</div><div class="tech-use">VEDA v1 protocol stubs</div></div>
+        </div>
+
+        <!-- Pillar 1 — APK -->
+        <div class="rm-pillar-head">
+            <span class="rm-pillar-num">01</span>
+            <div>
+                <h3>APK Debugging &amp; Stability</h3>
+                <p>The Android app is a native Java shell (<code>MainActivity.java</code>) hosting a bundled
+                web SPA. That split is exactly where today's instability hides.</p>
+            </div>
+        </div>
+
+        <div class="manual-section">
+            <details class="manual-card rm-card" open>
+                <summary><h3>Why the APK is unstable today</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <ul>
+                        <li><strong>JS crashes are invisible.</strong> The SPA (<code>assets/vayu-app/index.html</code>) runs inside a WebView — an uncaught JS exception never reaches native crash tooling. What looks like "the app just froze" is often a JS-layer throw.</li>
+                        <li><strong>Runtime permission gaps.</strong> The manifest declares <code>CAMERA</code>, <code>RECORD_AUDIO</code>, <code>BLUETOOTH_CONNECT</code>, <code>POST_NOTIFICATIONS</code>, <code>READ_CONTACTS</code> — all dangerous/runtime permissions on API 23+/31+/33+. A bridge call that assumes a grant it never requested throws <code>SecurityException</code>.</li>
+                        <li><strong><code>WRITE_SETTINGS</code> is special-access, not runtime.</strong> It requires routing the user through <code>Settings.ACTION_MANAGE_WRITE_SETTINGS</code> — a raw permission check silently no-ops or crashes downstream volume/brightness calls.</li>
+                        <li><strong>Exact alarms are gated on Android 12+.</strong> <code>SCHEDULE_EXACT_ALARM</code> needs <code>canScheduleExactAlarms()</code> checked at call time, or reminders fire late/never after Doze.</li>
+                        <li><strong>No foreground service, no persistence guarantee.</strong> The manifest declares a single <code>singleTop</code> activity and nothing else. Once VEDA Link or Phone Link needs a live socket while the app is backgrounded, OEM battery managers (Xiaomi, Oppo, Samsung) reclaim the process — it reads as "randomly disconnects."</li>
+                        <li><strong><code>usesCleartextTraffic="true"</code></strong> is required today for the LAN <code>phone_link</code> HTTP server on port 8080, but it's also a wide-open flag Play Console will flag and a silent-failure trap for any call that unexpectedly needs HTTPS.</li>
+                        <li><strong>API 24–34 spread.</strong> <code>minSdk 24</code> devices ship old system WebViews with different <code>evaluateJavascript</code> threading and geolocation callback behavior than the emulator you tested on.</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="manual-card rm-card">
+                <summary><h3>Systematic debugging checklist</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <p><strong>1. Reproduce on a matrix, not one device.</strong></p>
+                    <ul>
+                        <li>Cover API 24, 28, 31, 34 emulators plus one real Samsung/Xiaomi device (their battery killers differ from stock Android and from each other)</li>
+                        <li>Test cold start, resume-from-background after 10+ min, and rotation mid-voice-session</li>
+                    </ul>
+                    <p><strong>2. Instrument before guessing.</strong></p>
+                    <ul>
+                        <li><code>adb logcat --pid=$(adb shell pidof com.vayu.app)</code> filtered to <code>chromium</code> + <code>AndroidRuntime</code> tags</li>
+                        <li><code>chrome://inspect</code> → remote-debug the live WebView; the console tab catches the JS exceptions native logs never show</li>
+                        <li><code>adb shell dumpsys battery</code> + <code>dumpsys deviceidle</code> to confirm whether Doze/App-Standby is the real killer before blaming your own code</li>
+                        <li>Pull ANR traces from <code>/data/anr/traces.txt</code> for any "app not responding" reports</li>
+                    </ul>
+                    <p><strong>3. Fix by category, verify by category.</strong> Don't patch permission crashes and background-kill crashes in the same pass — they need different verification (a permission fix is testable in isolation; a background-kill fix needs a 15-minute soak test with the screen off).</p>
+                </div>
+            </details>
+
+            <details class="manual-card rm-card">
+                <summary><h3>Crash reporting: one Sentry project across all three surfaces</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <p>Firebase Crashlytics only covers Android/iOS/Web. Since the goal is one instability
+                    picture across the <strong>APK, the PyQt6 desktop EXE, and the web dashboard</strong>,
+                    <a href="https://sentry.io" target="_blank" rel="noopener">Sentry</a> is the better fit — it ships SDKs for all three and merges them into one issue stream.</p>
+
+                    <p><strong>Android — native crashes</strong></p>
+                    <div class="code-block"><pre><code><span class="cm">// android/app/build.gradle.kts</span>
+dependencies {
+    implementation(<span class="s">"io.sentry:sentry-android:7.14.0"</span>)
+}</code></pre></div>
+
+                    <p><strong>Android — JS errors inside the WebView</strong> (the crash class native SDKs can't see on their own)</p>
+                    <div class="code-block"><pre><code><span class="cm">// assets/vayu-app/index.html</span>
+window.onerror = <span class="k">function</span>(msg, url, line, col, err) {
+  <span class="k">if</span> (window.AndroidBridge) {
+    AndroidBridge.reportJsError(String(msg), String(err &amp;&amp; err.stack || <span class="s">''</span>));
+  }
+};
+window.addEventListener(<span class="s">'unhandledrejection'</span>, e =&gt; {
+  <span class="k">if</span> (window.AndroidBridge) AndroidBridge.reportJsError(<span class="s">'unhandledrejection'</span>, String(e.reason));
+});</code></pre></div>
+                    <div class="code-block"><pre><code><span class="cm">// MainActivity.java — new @JavascriptInterface method</span>
+<span class="k">@JavascriptInterface</span>
+<span class="k">public void</span> reportJsError(String message, String stack) {
+    Sentry.captureException(<span class="k">new</span> JsRuntimeException(message + <span class="s">"\n"</span> + stack));
+}</code></pre></div>
+
+                    <p><strong>Desktop EXE</strong> — near the existing <code>traceback</code> import at the top of <code>main.py</code></p>
+                    <div class="code-block"><pre><code><span class="k">import</span> sentry_sdk
+sentry_sdk.init(
+    dsn=<span class="s">"https://&lt;key&gt;@o0.ingest.sentry.io/&lt;project&gt;"</span>,
+    traces_sample_rate=<span class="k">0.1</span>,
+    release=<span class="s">f"vayu-desktop@{APP_VERSION}"</span>,
+)</code></pre></div>
+                    <p>Wrap the top-level exception handler already in <code>main.py</code> so it calls
+                    <code>sentry_sdk.capture_exception(e)</code> before printing, instead of only printing.</p>
+
+                    <p><strong>Web dashboard</strong> — <code>veda/dashboard/src/main.tsx</code></p>
+                    <div class="code-block"><pre><code>Sentry.init({ dsn: <span class="s">"..."</span>, environment: <span class="s">"veda-dashboard"</span> });</code></pre></div>
+                </div>
+            </details>
+        </div>
+
+        <!-- Pillar 2 — VEDA -->
+        <div class="rm-pillar-head">
+            <span class="rm-pillar-num">02</span>
+            <div>
+                <h3>Cross-Device Control Engine — VEDA</h3>
+                <p>VEDA already exists: a Go relay, a TypeScript device agent, a React dashboard, and a
+                versioned JSON protocol. The plan is to harden and extend it, not rebuild it.</p>
+            </div>
+        </div>
+
+        <div class="arch-flow" style="margin-bottom:2rem;">
+            <span class="arch-flow-step active">🗣️ Intent Parsing</span>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <span class="arch-flow-step active">🔐 AuthN / AuthZ</span>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <span class="arch-flow-step active">📡 Payload Routing</span>
+            <span class="arch-flow-arrow">&rarr;</span>
+            <span class="arch-flow-step active">⚙️ Target Execution</span>
+        </div>
+
+        <div class="manual-section">
+            <details class="manual-card rm-card">
+                <summary><h3>What's already shipped in VEDA v1</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <div class="rm-table-wrap">
+                        <table class="rm-table">
+                            <tr><th>Layer</th><th>Location</th><th>Role</th></tr>
+                            <tr><td>Protocol</td><td><code>veda/protocol</code></td><td>Versioned JSON envelope (<code>veda/1</code>) — single source of truth for Go, Node and TS</td></tr>
+                            <tr><td>Relay (canonical)</td><td><code>veda/relay-go</code></td><td>Hub, auth (pair tokens, session tokens), policy/consent engine, append-only audit log</td></tr>
+                            <tr><td>Relay (dev mirror)</td><td><code>veda/relay-node</code></td><td>Protocol-identical Node relay for day-to-day dev without a Go toolchain</td></tr>
+                            <tr><td>Device agent</td><td><code>veda/agent</code></td><td>TypeScript agent for Windows/macOS/Linux — registers, reports status, executes control actions</td></tr>
+                            <tr><td>Dashboard</td><td><code>veda/dashboard</code></td><td>React + Vite "My Devices" control plane — status, notifications, consent prompts, audit log</td></tr>
+                            <tr><td>Bridge</td><td><code>veda/bridge/veda_bridge.py</code></td><td>Joins the existing Python desktop app + Android web app to VEDA as devices, no rewrite needed</td></tr>
+                        </table>
+                    </div>
+                    <p style="margin-top:0.75rem;padding:0.75rem;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.12);border-radius:10px;font-size:0.85rem;">
+                        <strong>Consolidation note:</strong> <code>remote/cloud_link.py</code> (ntfy.sh pub/sub relay) and
+                        <code>remote/phone_link.py</code> (LAN HTTP + PIN) predate VEDA and still run as a second and third
+                        control path. They should stop growing new features and have their callers migrated onto
+                        <code>veda_bridge.py</code> — one control plane beats three.
+                    </p>
+                </div>
+            </details>
+
+            <details class="manual-card rm-card">
+                <summary><h3>Gaps: local discovery, mTLS, and file/media transfer</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <ul>
+                        <li><strong>No LAN-first path.</strong> Every control message — even between two devices in the same room — makes a round trip through the relay over WSS. Fine for reachability, wasteful for latency.</li>
+                        <li><strong>No mTLS.</strong> Devices authenticate to the relay with bearer session tokens over TLS; there's no mutual cert exchange for a direct device-to-device hop.</li>
+                        <li><strong><code>files.transfer</code> and <code>clipboard.paste</code> are v1 stubs</strong> per <code>veda/docs/PROTOCOL.md</code> — not implemented, and the JSON-envelope transport caps messages at 512&nbsp;KiB, too small for real file payloads anyway.</li>
+                    </ul>
+                    <p><strong>Proposed addition 1 — mDNS-assisted local upgrade.</strong> Relay brokers a
+                    short-lived offer; if the direct dial fails (different subnet, VPN, no <code>_veda._tcp</code>
+                    resolution) it falls back to the existing relay path automatically:</p>
+                    <div class="code-block"><pre><code>{
+  <span class="k">"v"</span>: 1,
+  <span class="k">"type"</span>: <span class="s">"link.local_offer"</span>,
+  <span class="k">"from"</span>: <span class="s">"device:laptop-04f1"</span>,
+  <span class="k">"to"</span>: <span class="s">"device:phone-91a2"</span>,
+  <span class="k">"id"</span>: <span class="s">"c9a7c2e0-..."</span>,
+  <span class="k">"ts"</span>: <span class="s">"2026-08-10T09:12:44Z"</span>,
+  <span class="k">"auth"</span>: <span class="s">"sess_1a0e..."</span>,
+  <span class="k">"body"</span>: {
+    <span class="k">"mdnsService"</span>: <span class="s">"_veda._tcp.local"</span>,
+    <span class="k">"host"</span>: <span class="s">"192.168.1.42"</span>,
+    <span class="k">"port"</span>: 8743,
+    <span class="k">"clientCertFingerprint"</span>: <span class="s">"sha256:4b1c..."</span>,
+    <span class="k">"expiresIn"</span>: 30
+  }
+}</code></pre></div>
+                    <p>The relay's existing auth package issues a short-lived client cert per pair at pairing
+                    time; the fingerprint above is what the receiving device pins before accepting the direct
+                    mTLS connection — the relay path keeps doing policy + audit, mTLS only supplements it for
+                    the LAN hop.</p>
+
+                    <p><strong>Proposed addition 2 — WebRTC data channel for file/media transfer.</strong>
+                    Signaling rides the same envelope (two new <code>type</code>s, no protocol version bump),
+                    so the actual bytes never touch the 512&nbsp;KiB relay cap:</p>
+                    <div class="code-block"><pre><code>{
+  <span class="k">"v"</span>: 1,
+  <span class="k">"type"</span>: <span class="s">"webrtc.offer"</span>,
+  <span class="k">"from"</span>: <span class="s">"device:laptop-04f1"</span>,
+  <span class="k">"to"</span>: <span class="s">"device:phone-91a2"</span>,
+  <span class="k">"id"</span>: <span class="s">"f0e1a3b2-..."</span>,
+  <span class="k">"ts"</span>: <span class="s">"2026-08-10T09:14:02Z"</span>,
+  <span class="k">"auth"</span>: <span class="s">"sess_1a0e..."</span>,
+  <span class="k">"body"</span>: {
+    <span class="k">"sdp"</span>: <span class="s">"v=0\r\no=- 46117 ..."</span>,
+    <span class="k">"purpose"</span>: <span class="s">"files.transfer"</span>,
+    <span class="k">"fileMeta"</span>: { <span class="k">"name"</span>: <span class="s">"roadmap.pdf"</span>, <span class="k">"size"</span>: 812004, <span class="k">"sha256"</span>: <span class="s">"9f2c..."</span> }
+  }
+}</code></pre></div>
+                </div>
+            </details>
+
+            <details class="manual-card rm-card">
+                <summary><h3>Command pipeline &amp; the permission matrix per platform</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <p>The four-stage pipeline shown above maps directly onto code that already exists:</p>
+                    <ul>
+                        <li><strong>Intent Parsing</strong> — Gemini/Groq function-calling in <code>main.py</code> already extracts <code>action</code> + <code>args</code> from natural language; no new NLU layer needed</li>
+                        <li><strong>AuthN / AuthZ</strong> — <code>veda/relay-go/internal/auth</code> (pairing, session tokens, at-rest hashing) + <code>internal/policy</code> (capability grants, consent)</li>
+                        <li><strong>Payload Routing</strong> — <code>veda/relay-go/internal/hub</code> (WebSocket fan-out), with the mDNS-direct path above as a shortcut around it</li>
+                        <li><strong>Target Execution</strong> — <code>veda/agent/src/platform.ts</code> on desktop OSes, <code>veda_bridge.py</code> for the legacy Python app, and the Android WebView bridge for phone-side actions — each replies with <code>control.result</code></li>
+                    </ul>
+                    <div class="rm-table-wrap">
+                        <table class="rm-table">
+                            <tr><th>Surface</th><th>Module</th><th>Permission / API</th><th>Unlocks</th></tr>
+                            <tr><td>Android</td><td>MainActivity JS bridge</td><td><code>RECORD_AUDIO</code></td><td>Voice command capture</td></tr>
+                            <tr><td>Android</td><td>MainActivity JS bridge</td><td><code>POST_NOTIFICATIONS</code> (runtime, 13+)</td><td><code>notify.send</code></td></tr>
+                            <tr><td>Android</td><td>MainActivity JS bridge</td><td><code>WRITE_SETTINGS</code> (special access)</td><td><code>set_volume</code>, <code>set_brightness</code></td></tr>
+                            <tr><td>Android</td><td>MainActivity JS bridge</td><td><code>SCHEDULE_EXACT_ALARM</code> (12+)</td><td><code>set_alarm</code>, reminders</td></tr>
+                            <tr><td>Android</td><td>MainActivity JS bridge</td><td><code>BLUETOOTH_CONNECT</code> (runtime, 12+)</td><td>LAN-direct pairing handshake</td></tr>
+                            <tr><td>Windows / macOS / Linux</td><td><code>agent/src/platform.ts</code></td><td>OS session APIs (lock/sleep/power)</td><td><code>lock</code>, <code>sleep</code>, <code>restart</code>, <code>shutdown</code> — consent-gated</td></tr>
+                            <tr><td>Windows / macOS / Linux</td><td><code>agent/src/platform.ts</code></td><td>User's own shell session</td><td><code>run_command</code>, behind <code>terminal.confirm</code></td></tr>
+                            <tr><td>Web dashboard</td><td><code>veda/dashboard</code></td><td>Web Notifications API</td><td>Control surface only — sends <code>control.request</code>, is never itself a target in v1</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- Pillar 3 — UI/UX -->
+        <div class="rm-pillar-head">
+            <span class="rm-pillar-num">03</span>
+            <div>
+                <h3>UI/UX Overhaul Strategy</h3>
+                <p>Three UI stacks ship today — PyQt6 desktop, a native WebView shell around vanilla-JS on
+                Android, and React on the dashboard. The fastest path to a cohesive feel is a shared token
+                layer, not a framework rewrite.</p>
+            </div>
+        </div>
+
+        <div class="manual-section">
+            <details class="manual-card rm-card">
+                <summary><h3>One design-token layer, three renderers</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <p>The desktop app already has a distinct dark "hologram" identity (see <code>face.png</code>,
+                    the animated hero canvas). Rather than invent a new palette, formalize that identity into
+                    tokens every surface consumes — a QSS generator for PyQt6, CSS custom properties for the
+                    WebView SPA, and the same custom properties for the React dashboard.</p>
+                    <div class="rm-table-wrap">
+                        <table class="rm-table">
+                            <tr><th>Token</th><th>Example value</th><th>Consumed by</th></tr>
+                            <tr><td>Color · surface / accent / semantic</td><td><code>--bg-primary</code>, <code>--accent</code>, <code>--danger</code></td><td>PyQt6 QSS vars, WebView CSS vars, dashboard CSS vars</td></tr>
+                            <tr><td>Type scale</td><td>12 / 14 / 16 / 20 / 28 / 38px, Inter + JetBrains Mono</td><td>All three — dashboard and WebView already use web fonts; PyQt6 needs the same families bundled</td></tr>
+                            <tr><td>Radius / spacing</td><td><code>--radius-sm</code> 10px, 8px spacing unit</td><td>All three, replacing the current per-surface magic numbers</td></tr>
+                            <tr><td>Motion</td><td>160ms ease-out for micro-interactions</td><td>Web + dashboard now; PyQt6 <code>QPropertyAnimation</code> to match later</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            <details class="manual-card rm-card">
+                <summary><h3>Platform component blueprints</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <div class="manual-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+                        <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.08);border-radius:10px;padding:1rem;">
+                            <div style="color:#00d4ff;font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">🌐 Web dashboard</div>
+                            <ul style="margin:0;">
+                                <li>Responsive device-grid with a collapsible sidebar, not a fixed one</li>
+                                <li>Skeleton loading states while a device's status heartbeat is pending</li>
+                                <li>Micro-animations on device cards for online/offline transitions</li>
+                            </ul>
+                        </div>
+                        <div style="background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.08);border-radius:10px;padding:1rem;">
+                            <div style="color:#a78bfa;font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">📱 Mobile APK</div>
+                            <ul style="margin:0;">
+                                <li>Bottom-sheet navigation for one-handed reach on tall phones</li>
+                                <li>Native touch/swipe gestures — the desktop already has 14 MediaPipe hand gestures; mobile gets the touch equivalent</li>
+                                <li>Adaptive layout for foldables and split-screen</li>
+                            </ul>
+                        </div>
+                        <div style="background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.08);border-radius:10px;padding:1rem;">
+                            <div style="color:#34d399;font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">🖥️ Desktop EXE</div>
+                            <ul style="margin:0;">
+                                <li>Expand the existing <code>QSystemTrayIcon</code> into a full quick-actions tray menu</li>
+                                <li>Compact borderless "overlay mode" — always-on-top, small footprint</li>
+                                <li>Promote the current in-app <code>QShortcut</code>s (F4 mute, F11 fullscreen) to real OS-level global hotkeys</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <details class="manual-card rm-card">
+                <summary><h3>Framework consolidation — the actual recommendation</h3><span class="rm-chevron">+</span></summary>
+                <div class="rm-body">
+                    <p>Three products already ship and work. A unified-framework rewrite (Flutter, React
+                    Native + Electron, Compose Multiplatform) is a real option — but only once the shared
+                    token layer above has been live for a cycle and the team wants one codebase badly enough
+                    to justify re-platforming three working apps at once.</p>
+                    <div class="rm-table-wrap">
+                        <table class="rm-table">
+                            <tr><th>Approach</th><th>Migration cost</th><th>Risk to shipping surfaces</th><th>Verdict</th></tr>
+                            <tr><td>Keep hybrid + shared tokens</td><td>Low — CSS/QSS vars only</td><td>None — additive</td><td>Do this now</td></tr>
+                            <tr><td>Flutter (single codebase)</td><td>High — rewrite all 3 UIs</td><td>High — PyQt6 native integrations (tray, pyautogui) need reimplementing</td><td>Revisit only if a true rewrite is greenlit</td></tr>
+                            <tr><td>React Native + Electron</td><td>Medium-high — Android rewrite, desktop shell swap</td><td>Medium — Electron adds a second desktop runtime alongside PyInstaller</td><td>Viable if JS becomes the team's primary stack</td></tr>
+                            <tr><td>Compose Multiplatform</td><td>High — new toolchain for all 3</td><td>High — least mature story for the existing PyQt6/WebView integrations</td><td>Not recommended today</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <div style="margin:3.5rem 0 1.5rem;">
+            <h3 style="color:#fff;font-size:1.5rem;font-weight:700;letter-spacing:-0.3px;">Rollout Plan</h3>
+        </div>
+        <div class="manual-card">
+            <div class="manual-step">
+                <div class="step-num">1</div>
+                <div class="step-body"><p><strong>Instrument first.</strong> Wire Sentry across Android (native + JS bridge), desktop, and the dashboard before changing behavior — you need a real crash baseline, not guesses.</p></div>
+            </div>
+            <div class="manual-step">
+                <div class="step-num">2</div>
+                <div class="step-body"><p><strong>Fix the top APK crash classes</strong> surfaced by week one of Sentry data — almost certainly the permission-gating and background-kill issues above.</p></div>
+            </div>
+            <div class="manual-step">
+                <div class="step-num">3</div>
+                <div class="step-body"><p><strong>Consolidate control planes.</strong> Migrate <code>cloud_link.py</code>/<code>phone_link.py</code> callers onto <code>veda_bridge.py</code>, then ship mDNS local-discovery and mTLS for the LAN path.</p></div>
+            </div>
+            <div class="manual-step">
+                <div class="step-num">4</div>
+                <div class="step-body"><p><strong>Ship WebRTC file/media transfer</strong>, retire the <code>files.transfer</code>/<code>clipboard.paste</code> stubs, and land the shared design-token layer across all three UIs.</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- ─── Creator Card ─── -->
 <section id="creator">
     <div class="container">
@@ -2812,6 +3261,7 @@
                 <a href="#features">Features</a>
                 <a href="#architecture">Architecture</a>
                 <a href="#manual">Manual</a>
+                <a href="#roadmap">Roadmap</a>
                 <a href="#download">Download</a>
             </div>
             <div class="footer-col">
