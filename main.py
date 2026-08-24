@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace') if hasattr(sys.stdout, 'reconfigure') else None
 
+import requests
 import sounddevice as sd
 try:
     import psutil

@@ -1,3 +1,13 @@
+"""Hardware queries via PowerShell.
+
+The import header was missing, so every function here raised NameError on
+its first line.
+"""
+
+import math
+import subprocess
+import time
+
 def _ps(cmd: str, timeout: int = 15) -> str:
     try:
         result = subprocess.run(

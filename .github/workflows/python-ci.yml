@@ -1,0 +1,54 @@
+name: python-ci
+
+# The desktop assistant is the bulk of the codebase and had no CI at all.
+# These checks deliberately avoid the heavy desktop stack (PyQt, mediapipe,
+# pyaudio) so they stay fast and run on Linux: the modules under test are the
+# ones with logic worth protecting, and none of them need a display or a mic.
+
+on:
+  push:
+    paths:
+      - '**.py'
+      - '.github/workflows/python-ci.yml'
+  pull_request:
+    paths:
+      - '**.py'
+      - '.github/workflows/python-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax-check every module
+        run: python -m compileall -q .
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet ruff
+
+      # Errors only for now: the existing tree has plenty of style drift, and
+      # a lint job that always fails is a lint job everyone learns to ignore.
+      #
+      # actions/code_agent.py is excluded because it is genuinely broken, not
+      # merely untidy: the file begins mid-module, so its imports and six of
+      # its helpers (_read_file, _write_code, _list_tools, _list_project,
+      # _get_gemini, BASE_DIR) do not exist. Nothing imports it — it is only
+      # named as a string in core/modes.py — so it fails no one today. It
+      # needs restoring from history rather than patching, and the exclusion
+      # should go when it is.
+      - name: Ruff (errors only)
+        run: ruff check --select E9,F63,F7,F82 --exclude actions/code_agent.py .
