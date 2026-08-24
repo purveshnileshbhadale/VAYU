@@ -56,6 +56,7 @@ from plugins.loader import load_plugins, plugin_declarations, execute_plugin
 from memory.conversation_db    import init_db, add_entry
 from web.web_control import WebControlServer
 from voice.speech import speech
+from core.tool_schema import groq_tool_schema
 
 # Mic thresholds. The barge-in bar sits well above the normal speech floor
 # because the mic hears VAYU's own output too (no echo cancellation).
@@ -270,6 +271,22 @@ TOOL_DECLARATIONS = [
                 "text":  {"type": "STRING", "description": "The question or instruction about the captured image"}
             },
             "required": ["text"]
+        }
+    },
+    {
+        "name": "gesture_control",
+        "description": (
+            "Turns hand-gesture control of the computer on or off, using the webcam. "
+            "Gestures then drive volume, scrolling, alt-tab, play/pause, show desktop "
+            "and task view. Also toggles the hand cursor, which moves the mouse pointer "
+            "with a pointed finger."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "action": {"type": "STRING", "description": "'on', 'off', 'status', 'cursor_on', or 'cursor_off'"}
+            },
+            "required": ["action"]
         }
     },
     {
@@ -894,6 +911,7 @@ class VayuLive:
         self._loop          = None
         self._is_speaking   = False
         self._groq_mode     = False
+        self._gesture       = None
         self._speaking_lock = threading.Lock()
         self.ui.on_text_command = self._on_text_command
         self.web = WebControlServer(on_command=self._on_web_command)
@@ -901,6 +919,20 @@ class VayuLive:
 
         cfg = _read_config()
         self.use_groq = bool(cfg.get("use_groq", False))
+
+        self.ambient = None
+        if cfg.get("ambient", True):
+            try:
+                from brain.ambient import AmbientMonitor
+                self.ambient = AmbientMonitor(
+                    speak=self._speak_unprompted,
+                    is_busy=self._conversation_busy,
+                    poll_sec=float(cfg.get("ambient_poll_sec", 60)),
+                )
+                self.ambient.start()
+            except Exception as e:
+                print(f"[ambient] ⚠️ {e}")
+
         self.cloud = None
         pair = (cfg.get("cloud_pair") or "").strip()
         if pair:
@@ -912,6 +944,105 @@ class VayuLive:
                     print(f"[CloudLink] ON — internet link ready (pair code set)")
             except Exception as e:
                 print(f"[CloudLink] ⚠️ {e}")
+
+    # -- gesture control --------------------------------------------------
+
+    # Gesture name -> what it does. The recognizer in vision/gesture.py already
+    # produces these action names; nothing was ever listening for them.
+    _GESTURE_KEYS = {
+        "volume_up":    ("press", "volumeup"),
+        "volume_down":  ("press", "volumedown"),
+        "enter":        ("press", "enter"),
+        "toggle_play":  ("press", "playpause"),
+        "alt_tab":      ("hotkey", ("alt", "tab")),
+        "desktop_show": ("hotkey", ("win", "d")),
+        "task_view":    ("hotkey", ("win", "tab")),
+        "scroll_up":    ("scroll", 300),
+        "scroll_down":  ("scroll", -300),
+    }
+
+    def _gesture_control(self, args: dict) -> str:
+        action = (args or {}).get("action", "status").lower().strip()
+
+        if action in ("on", "start", "enable"):
+            if self._gesture and self._gesture.is_running():
+                return "Gesture control is already on, sir."
+            try:
+                from vision.gesture import GestureRecognizer, ensure_model
+                ensure_model()
+                self._gesture = GestureRecognizer()
+                self._gesture.start(callback=self._on_gesture)
+            except Exception as e:
+                return f"I couldn't start gesture control, sir: {e}"
+            self.ui.write_log("SYS: gesture control on.")
+            return "Gesture control is on, sir. I'm watching your hands."
+
+        if action in ("off", "stop", "disable"):
+            if not self._gesture:
+                return "Gesture control is already off, sir."
+            try:
+                self._gesture.stop()
+            except Exception:
+                pass
+            self._gesture = None
+            self.ui.write_log("SYS: gesture control off.")
+            return "Gesture control is off, sir."
+
+        if action in ("cursor_on", "cursor"):
+            if not self._gesture:
+                return "Gesture control isn't running, sir."
+            self._gesture.set_cursor_mode(True)
+            return "Hand cursor engaged, sir."
+
+        if action == "cursor_off":
+            if self._gesture:
+                self._gesture.set_cursor_mode(False)
+            return "Hand cursor off, sir."
+
+        running = bool(self._gesture and self._gesture.is_running())
+        return f"Gesture control is {'on' if running else 'off'}, sir."
+
+    def _on_gesture(self, gesture, action: str) -> None:
+        """Called from the recognizer thread when a gesture is recognised."""
+        try:
+            if action == "mute_toggle":
+                self.ui.muted = not self.ui.muted
+                if self.ui.muted:
+                    speech.stop()
+                self.ui.write_log(f"GESTURE: {'muted' if self.ui.muted else 'unmuted'}")
+                return
+            if action == "unmute":
+                self.ui.muted = False
+                self.ui.write_log("GESTURE: unmuted")
+                return
+
+            move = self._GESTURE_KEYS.get(action)
+            if not move:
+                return
+            import pyautogui
+            kind, value = move
+            if kind == "press":
+                pyautogui.press(value)
+            elif kind == "hotkey":
+                pyautogui.hotkey(*value)
+            elif kind == "scroll":
+                pyautogui.scroll(value)
+            self.ui.write_log(f"GESTURE: {getattr(gesture, 'value', gesture)} → {action}")
+        except Exception as e:
+            print(f"[Gesture] ⚠️ {action}: {e}")
+
+    def _conversation_busy(self) -> bool:
+        """True when an unprompted remark would be talking over something."""
+        return bool(self.ui.muted or speech.is_speaking or self._is_speaking)
+
+    def _speak_unprompted(self, text: str) -> None:
+        """Say something nobody asked for. Only reached when not busy."""
+        if self.ui.muted:
+            return
+        print(f"[VAYU] Vayu (unprompted): {text}")
+        self.ui.write_log(f"Vayu: {text}")
+        self.web.add_log("vayu", text)
+        speech.say(text)
 
     async def _dispatch_tool(self, name: str, args: dict) -> str:
         fc = types.FunctionCall(id="cloud-" + name, name=name, args=args)
@@ -1041,18 +1172,7 @@ class VayuLive:
     GROQ_STT_URL  = "https://api.groq.com/openai/v1/audio/transcriptions"
 
     def _groq_tools(self):
-        tools = []
-        for d in TOOL_DECLARATIONS:
-            for fn in d.get("function_declarations", []):
-                tools.append({
-                    "type": "function",
-                    "function": {
-                        "name": fn.get("name"),
-                        "description": fn.get("description", ""),
-                        "parameters": fn.get("parameters"),
-                    },
-                })
-        return tools
+        return groq_tool_schema(TOOL_DECLARATIONS + plugin_declarations())
 
     async def run_groq(self):
         print("[VAYU] 🎙️ GROQ MODE active (no Gemini key required)")
@@ -1434,13 +1554,33 @@ class VayuLive:
 
 
             elif name == "screen_process":
-                threading.Thread(
-                    target=screen_process,
-                    kwargs={"parameters": args, "response": None,
-                            "player": self.ui, "session_memory": None},
-                    daemon=True
-                ).start()
-                result = "Vision module activated. Stay completely silent — vision module will speak directly."
+                # The Gemini live vision module speaks for itself, so the model
+                # is told to stay quiet. In Groq mode there is no Gemini session
+                # at all, so we look with Groq instead and return the answer as
+                # an ordinary tool result — spoken in character, streamed, and
+                # interruptible like everything else.
+                if self._groq_mode:
+                    from vision import groq_vision
+                    r = await loop.run_in_executor(
+                        None,
+                        lambda: groq_vision.look(
+                            angle=args.get("angle", "screen"),
+                            question=args.get("text") or "What do you see?",
+                        ),
+                    )
+                    result = r or "I couldn't see anything, sir."
+                else:
+                    threading.Thread(
+                        target=screen_process,
+                        kwargs={"parameters": args, "response": None,
+                                "player": self.ui, "session_memory": None},
+                        daemon=True
+                    ).start()
+                    result = "Vision module activated. Stay completely silent — vision module will speak directly."
+
+            elif name == "gesture_control":
+                r = await loop.run_in_executor(None, lambda: self._gesture_control(args))
+                result = r or "Done."
 
             elif name == "computer_settings":
                 r = await loop.run_in_executor(None, lambda: computer_settings(parameters=args, response=None, player=self.ui))
