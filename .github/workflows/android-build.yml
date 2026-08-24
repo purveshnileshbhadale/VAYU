@@ -20,10 +20,17 @@ on:
     paths:
       - 'android/**'
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Also commit the APK to docs/downloads and website/downloads'
+        type: boolean
+        default: false
 
 jobs:
   apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -59,3 +66,28 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # Run-artifact downloads are behind a short-lived signed URL on a
+      # separate host, which is awkward to reach from some environments. This
+      # puts the APK where this repo already keeps them, on request only —
+      # off by default so routine pushes don't commit a 3MB binary each time.
+      - name: Commit the APK to downloads
+        if: inputs.publish
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' android/app/build.gradle.kts)
+          SRC=$(find android/app/build/outputs/apk/debug -name '*.apk' | head -1)
+          NAME="VAYU-v${VERSION}-debug.apk"
+          for DIR in docs/downloads website/downloads; do
+            mkdir -p "$DIR"
+            cp "$SRC" "$DIR/$NAME"
+          done
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/downloads/"$NAME" website/downloads/"$NAME"
+          if git diff --cached --quiet; then
+            echo "APK unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "build: ${NAME} from ${GITHUB_SHA::7}"
+          git push origin HEAD:"${GITHUB_REF_NAME}"
