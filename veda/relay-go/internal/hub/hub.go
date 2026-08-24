@@ -49,8 +49,15 @@ type Hub struct {
 	sockets  map[*Conn]bool
 	byID     map[string]*Conn
 	sess     *auth.Sessions
-	consents map[string]chan bool
+	consents map[string]pending
 	logx     *audit.Logger
+}
+
+// pending is an in-flight consent prompt: the channel the gate is waiting on,
+// and the device that was asked. Only that device may answer.
+type pending struct {
+	ch     chan bool
+	target string
 }
 
 // New returns a ready hub bound to the given session store.
@@ -59,7 +66,7 @@ func New(sess *auth.Sessions) *Hub {
 		sockets:  map[*Conn]bool{},
 		byID:     map[string]*Conn{},
 		sess:     sess,
-		consents: map[string]chan bool{},
+		consents: map[string]pending{},
 	}
 }
 
@@ -129,7 +136,17 @@ func (h *Hub) broadcast(e message.Envelope) {
 }
 
 // Handle routes one incoming envelope from a connection.
+//
+// Only "hello" is reachable before authentication. Every other type requires a
+// connection that has completed the handshake, because routing below trusts the
+// connection's own identity (c.ID) rather than anything the sender claims in the
+// envelope.
 func (h *Hub) Handle(c *Conn, e message.Envelope) {
+	if e.Type != "hello" && !h.authed(c) {
+		h.fault(c, "401", "unauthenticated", e.Type)
+		h.log(audit.Entry{Act: "reject.unauthenticated", Result: e.Type, OK: false})
+		return
+	}
 	switch e.Type {
 	case "hello":
 		h.onHello(c, e)
@@ -148,11 +165,29 @@ func (h *Hub) Handle(c *Conn, e message.Envelope) {
 	}
 }
 
+// authed reports whether c completed hello and is still the live socket for its
+// device id.
+func (h *Hub) authed(c *Conn) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return c.ID != "" && h.byID[c.ID] == c
+}
+
+// fault writes an error straight back down the socket. It does not route by id,
+// so it still reaches connections that have no identity yet.
+func (h *Hub) fault(c *Conn, code, kind, msg string) {
+	_ = c.writeJSON(message.Envelope{V: 1, To: c.ID, Type: "fault",
+		Body: rw(message.Fault{Code: code, Fault: kind, Msg: msg})})
+}
+
 func (h *Hub) onHello(c *Conn, e message.Envelope) {
 	var hb message.Hello
 	if err := json.Unmarshal(e.Body, &hb); err != nil { return }
 	if !h.sess.VerifyToken(hb.Token) {
-		h.send(e.From, message.Envelope{V: 1, To: e.From, Type: "fault", Body: rw(message.Fault{Code: "401", Fault: "bad_token"})})
+		// Write directly: the sender has no id in byID yet, so routing by id
+		// would silently drop this and leave the client hanging.
+		h.fault(c, "401", "bad_token", "")
+		h.log(audit.Entry{Act: "hello", Result: "bad_token", OK: false})
 		return
 	}
 	d := h.sess.RegisterDevice(hb.Device)
@@ -196,28 +231,32 @@ func (h *Hub) onControlRequest(c *Conn, e message.Envelope) {
 	if err := json.Unmarshal(e.Body, &req); err != nil { return }
 	a := policy.Lookup(req.Action)
 	if a == nil {
-		h.send(e.From, message.Envelope{V: 1, To: e.From, Type: "fault", Body: rw(message.Fault{Code: "400", Fault: "unknown_action", Msg: req.Action})})
+		h.fault(c, "400", "unknown_action", req.Action)
 		return
 	}
-	if req.Consent != "granted" && a.Critical {
+	// The requester does not get a vote on whether it needs consent: req.Consent
+	// is attacker-controlled input, so it is ignored entirely and the gate is
+	// decided from the policy table alone.
+	if a.Critical || a.Consent == "confirm" {
 		h.onConsentGate(c, e, req)
 		return
 	}
-	h.dispatch(c, e, req, "granted")
+	h.dispatch(c, e, req, "none")
 }
 
 // onConsentGate asks the target to approve a critical action before dispatch.
 func (h *Hub) onConsentGate(c *Conn, e message.Envelope, req message.ControlRequest) {
 	ch := make(chan bool, 1)
 	h.mu.Lock()
-	h.consents[req.ControlID] = ch
+	// Record who was asked, so only that device can answer.
+	h.consents[req.ControlID] = pending{ch: ch, target: e.To}
 	h.mu.Unlock()
 	h.log(audit.Entry{Act: "control.consent.request", Source: c.ID, Target: e.To, Action: req.Action, OK: false})
 	h.send(e.To, message.Envelope{V: 1, Type: "control.consent.request", From: c.ID, Body: rw(message.ConsentRequest{ControlID: req.ControlID, Action: req.Action, Source: c.ID})})
 	select {
 	case ok := <-ch:
 		if !ok {
-			h.send(e.From, message.Envelope{V: 1, To: e.From, Type: "control.result", Body: rw(message.ControlResult{ControlID: req.ControlID, OK: false, Error: "consent denied"})})
+			h.send(c.ID, message.Envelope{V: 1, To: c.ID, Type: "control.result", Body: rw(message.ControlResult{ControlID: req.ControlID, OK: false, Error: "consent denied"})})
 			return
 		}
 		h.dispatch(c, e, req, "granted")
@@ -225,7 +264,7 @@ func (h *Hub) onConsentGate(c *Conn, e message.Envelope, req message.ControlRequ
 		h.mu.Lock()
 		delete(h.consents, req.ControlID)
 		h.mu.Unlock()
-		h.send(e.From, message.Envelope{V: 1, To: e.From, Type: "control.result", Body: rw(message.ControlResult{ControlID: req.ControlID, OK: false, Error: "consent timeout"})})
+		h.send(c.ID, message.Envelope{V: 1, To: c.ID, Type: "control.result", Body: rw(message.ControlResult{ControlID: req.ControlID, OK: false, Error: "consent timeout"})})
 	}
 }
 
@@ -239,13 +278,21 @@ func (h *Hub) onConsentResult(c *Conn, e message.Envelope) {
 	var r message.ConsentResult
 	if err := json.Unmarshal(e.Body, &r); err != nil { return }
 	h.mu.Lock()
-	ch, ok := h.consents[r.ControlID]
-	delete(h.consents, r.ControlID)
-	h.mu.Unlock()
-	if ok {
-		h.log(audit.Entry{Act: "control.consent.result", Source: c.ID, Target: r.ControlID, OK: r.OK})
-		ch <- r.OK
+	p, ok := h.consents[r.ControlID]
+	// Only the device the prompt was sent to may answer it; anyone else leaves
+	// the gate pending so the real target still gets its say.
+	if ok && p.target == c.ID {
+		delete(h.consents, r.ControlID)
+	} else {
+		ok = false
 	}
+	h.mu.Unlock()
+	if !ok {
+		h.log(audit.Entry{Act: "control.consent.result", Source: c.ID, Target: r.ControlID, Result: "not_addressee", OK: false})
+		return
+	}
+	h.log(audit.Entry{Act: "control.consent.result", Source: c.ID, Target: r.ControlID, OK: r.OK})
+	p.ch <- r.OK
 }
 
 func (h *Hub) onControlResult(c *Conn, e message.Envelope) {

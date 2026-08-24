@@ -26,11 +26,36 @@ interface Opts {
 
 const CRITICAL_ACTIONS = new Set(['restart', 'shutdown', 'run_command', 'lock', 'sleep']);
 
+/** How long a consent this device granted stays usable. */
+const GRANT_TTL_MS = 60_000;
+
 export class Agent {
   private ws?: WebSocket;
   private closed = false;
 
+  /**
+   * Control IDs this device approved through its own consent dialog, with
+   * expiry. This is the only thing that counts as consent — the `consent`
+   * field on an inbound request is written by whoever sent the request, so it
+   * is never evidence that the user agreed to anything.
+   */
+  private readonly granted = new Map<string, number>();
+
   constructor(private readonly opts: Opts) {}
+
+  private rememberGrant(controlId: string) {
+    const now = Date.now();
+    for (const [id, expiry] of this.granted) if (expiry <= now) this.granted.delete(id);
+    this.granted.set(controlId, now + GRANT_TTL_MS);
+  }
+
+  /** Consume a grant for controlId; false if absent or expired. Single-use. */
+  private consumeGrant(controlId: string): boolean {
+    const expiry = this.granted.get(controlId);
+    if (expiry === undefined) return false;
+    this.granted.delete(controlId);
+    return expiry > Date.now();
+  }
 
   connect(): Promise<void> {
     const url = `${this.opts.relay}${this.opts.port ? `:${this.opts.port}` : ''}/`;
@@ -79,12 +104,15 @@ export class Agent {
   /** Confirm a risky remote action with the local user (OS-level consent). */
   private async onConsentRequest(r: ConsentRequest) {
     const ok = await pl.userConfirm(`${r.source} wants to ${r.action.toUpperCase()} this device.\nAllow?`, r.action);
+    if (ok) this.rememberGrant(r.controlId);
     this.send(env(Msg.ConsentResult, '', { controlId: r.controlId, ok }));
     audit('consent', { controlId: r.controlId, ok, action: r.action, source: r.source });
   }
 
   private async onControlRequest(r: ControlRequest, from: string) {
-    if (CRITICAL_ACTIONS.has(r.action) && r.consent !== 'granted') {
+    // Consent counts only if this device granted it, for this control id, just
+    // now. r.consent is the requester's own claim and carries no weight.
+    if (CRITICAL_ACTIONS.has(r.action) && !this.consumeGrant(r.controlId)) {
       const ok = await pl.userConfirm(`${from} wants to ${r.action.toUpperCase()} ${hostname()}.\nPermit?`, r.action);
       if (!ok) {
         this.send(env(Msg.ControlResult, from, { controlId: r.controlId, ok: false, error: 'denied by user' }));
