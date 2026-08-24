@@ -172,6 +172,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--border-b);border-radius:2px}
 ::-webkit-scrollbar-track{background:transparent}
+
+/* live camera overlay */
+#liveCam{position:fixed;inset:0;z-index:900;display:none;flex-direction:column;
+  background:#000;align-items:stretch;justify-content:flex-start}
+#liveVideo{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.live-bar{position:relative;z-index:2;display:flex;align-items:center;gap:10px;
+  padding:14px 16px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#ff4b4b;
+  box-shadow:0 0 8px #ff4b4b;animation:livePulse 1.4s infinite}
+@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.25}}
+.live-label{font-size:11px;letter-spacing:.18em;color:#fff;font-weight:700}
+.live-spacer{flex:1}
+.live-btn{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.35);
+  color:#fff;border-radius:8px;padding:7px 11px;font-size:15px;line-height:1;cursor:pointer}
+.live-foot{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:16px;
+  display:flex;flex-direction:column;gap:12px;
+  background:linear-gradient(0deg,rgba(0,0,0,.85),transparent)}
+#liveCaption{display:none;color:#fff;font-size:14px;line-height:1.45;
+  background:rgba(0,0,0,.55);border-radius:10px;padding:10px 12px;max-height:34vh;overflow:auto}
+.live-ask{display:flex;gap:8px;align-items:center}
+.live-ask input{flex:1;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3);
+  color:#fff;border-radius:10px;padding:11px 12px;font-size:14px;outline:none}
+.live-ask input::placeholder{color:rgba(255,255,255,.55)}
+.live-mic{background:#12b6cf;border:none;color:#001018;border-radius:50%;
+  width:46px;height:46px;font-size:19px;cursor:pointer;flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -237,7 +262,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
 
   <div class="action-bar">
-    <button class="abtn" onclick="capturePhoto()" title="Camera">📷</button>
+    <button class="abtn" onclick="capturePhoto()" oncontextmenu="event.preventDefault();openLiveCam();return false;" title="Camera (hold for live)">📷</button>
+    <button class="abtn" onclick="openLiveCam()" title="Live camera">🎥</button>
     <button class="abtn" id="modeBtn" onclick="openOverlay('modes')" title="Mode">🧭</button>
     <button class="abtn" onclick="openOverlay('history')" title="History">🕘</button>
     <button class="abtn" onclick="openOverlay('log')" title="Activity log">📜</button>
@@ -1303,6 +1329,7 @@ async function sendText(){
   const text=inp.value.trim();
   if(!text||isProcessing) return;
   inp.value='';
+  if(typeof liveCamOpen==='function'&&liveCamOpen()){ await askLive(text); return; }
   const extra={};
   if(pendingPhoto){ extra.image=pendingPhoto; pendingPhoto=null; }
   addMsg('user',text,{img:extra.image?('data:'+extra.image.mime+';base64,'+extra.image.b64):null});
@@ -1366,6 +1393,8 @@ function voiceStopped(){
 function handleSpeechResult(text){
   voiceStopped();
   if(!text||!text.trim()) return;
+  // With the camera live, a spoken question is about what it can see.
+  if(typeof liveCamOpen==='function'&&liveCamOpen()){ askLive(text.trim()); return; }
   addMsg('user',text.trim());
   writeLog('you',text.trim());
   processInput(text.trim());
@@ -1845,6 +1874,204 @@ window.resetApp=resetApp;
 window.renderHistory=renderHistory;
 window.exportHistory=exportHistory;
 window.clearHistory=clearHistory;
+
+/* =====================================================================
+   Live camera — point it at something and ask out loud
+   ---------------------------------------------------------------------
+   The existing camera flow takes one still, then waits for you to type a
+   question. This keeps the camera running: whatever you say or type while
+   it is open is answered against the frame that was on screen at that
+   moment, so you can ask three things about one scene without re-shooting.
+   ===================================================================== */
+let liveStream=null, liveFacing='environment', liveOn=false;
+
+function liveCamOpen(){ return liveOn; }
+
+async function openLiveCam(){
+  if(liveOn){ closeLiveCam(); return; }
+  const el=document.getElementById('liveCam');
+  const video=document.getElementById('liveVideo');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showToast('This device has no camera access'); return;
+  }
+  try{
+    liveStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:liveFacing,width:{ideal:1280},height:{ideal:720}},audio:false});
+  }catch(e){
+    showToast('Camera blocked — allow camera access and try again');
+    writeLog('sys','Camera denied: '+(e&&e.name||e));
+    return;
+  }
+  video.srcObject=liveStream;
+  try{ await video.play(); }catch(e){}
+  el.style.display='flex';
+  liveOn=true;
+  vibrate(15);
+  liveSay('Camera live. Ask me anything you can see.');
+  writeLog('sys','Live camera on ('+liveFacing+')');
+}
+
+function closeLiveCam(){
+  const el=document.getElementById('liveCam');
+  if(liveStream){ liveStream.getTracks().forEach(t=>{ try{t.stop();}catch(e){} }); liveStream=null; }
+  const video=document.getElementById('liveVideo');
+  if(video) video.srcObject=null;
+  if(el) el.style.display='none';
+  liveOn=false;
+  writeLog('sys','Live camera off');
+}
+
+async function flipLiveCam(){
+  liveFacing=(liveFacing==='environment')?'user':'environment';
+  if(liveOn){ closeLiveCam(); await openLiveCam(); }
+}
+
+/** Current frame as {b64, mime}, or null if the camera isn't ready yet. */
+function grabLiveFrame(){
+  const video=document.getElementById('liveVideo');
+  if(!video||!video.videoWidth) return null;
+  // Cap the long edge: a 1080p JPEG in base64 is a slow upload on mobile data.
+  const maxEdge=1024;
+  const scale=Math.min(1,maxEdge/Math.max(video.videoWidth,video.videoHeight));
+  const c=document.createElement('canvas');
+  c.width=Math.round(video.videoWidth*scale);
+  c.height=Math.round(video.videoHeight*scale);
+  c.getContext('2d').drawImage(video,0,0,c.width,c.height);
+  const url=c.toDataURL('image/jpeg',0.8);
+  return {b64:url.split(',')[1],mime:'image/jpeg'};
+}
+
+function liveSay(text){
+  const cap=document.getElementById('liveCaption');
+  if(cap){ cap.textContent=text; cap.style.display='block'; }
+}
+
+/** Ask about what the camera is seeing right now. */
+async function askLive(text){
+  const frame=grabLiveFrame();
+  if(!frame){ showToast('Camera is still warming up'); return; }
+  liveSay('…');
+  addMsg('user',text,{img:'data:image/jpeg;base64,'+frame.b64});
+  writeLog('you',text);
+  await processInput(text,{image:frame});
+  const last=convHistory.length?convHistory[convHistory.length-1]:null;
+  if(last&&last.role==='assistant') liveSay(last.content);
+}
+
+/* =====================================================================
+   Touch gestures — one-handed control without hunting for a button
+   ===================================================================== */
+const GESTURE_HINTS={
+  up:'Live camera', down:'Close', left:'Previous mode',
+  right:'Next mode', two:'Mute', hold:'Listen'
+};
+let gsX=0, gsY=0, gsT=0, gsFingers=0, gsHoldTimer=null, gesturesOn=true;
+
+function setGesturesEnabled(on){
+  gesturesOn=!!on;
+  try{ localStorage.setItem('vayu_gestures',gesturesOn?'1':'0'); }catch(e){}
+  showToast('Gestures '+(gesturesOn?'on':'off'));
+}
+
+function initGestures(){
+  try{ gesturesOn=localStorage.getItem('vayu_gestures')!=='0'; }catch(e){}
+  const surface=document.body;
+
+  surface.addEventListener('touchstart',(e)=>{
+    if(!gesturesOn) return;
+    gsFingers=Math.max(gsFingers,e.touches.length);
+    const t=e.touches[0];
+    gsX=t.clientX; gsY=t.clientY; gsT=Date.now();
+    clearTimeout(gsHoldTimer);
+    gsHoldTimer=setTimeout(()=>{
+      // Long press anywhere that isn't a control: start listening.
+      if(e.target.closest('button,input,textarea,select,a,.panel')) return;
+      vibrate(20); runGesture('hold');
+    },620);
+  },{passive:true});
+
+  surface.addEventListener('touchmove',()=>{ clearTimeout(gsHoldTimer); },{passive:true});
+
+  surface.addEventListener('touchend',(e)=>{
+    clearTimeout(gsHoldTimer);
+    if(!gesturesOn){ gsFingers=0; return; }
+    const fingers=gsFingers; gsFingers=0;
+    const t=e.changedTouches[0];
+    if(!t) return;
+    const dx=t.clientX-gsX, dy=t.clientY-gsY, dt=Date.now()-gsT;
+    const adx=Math.abs(dx), ady=Math.abs(dy);
+
+    if(fingers>=2 && adx<40 && ady<40 && dt<400){ runGesture('two'); return; }
+    if(dt>700) return;                       // a slow drag is a scroll, not a swipe
+    if(Math.max(adx,ady)<70) return;         // too small to be deliberate
+    if(e.target.closest('input,textarea,select')) return;
+
+    if(ady>adx) runGesture(dy<0?'up':'down');
+    else        runGesture(dx<0?'left':'right');
+  },{passive:true});
+}
+
+function runGesture(name){
+  vibrate(12);
+  switch(name){
+    case 'up':    openLiveCam(); break;
+    case 'down':  if(liveOn){ closeLiveCam(); } else { closeAllPanels(); } break;
+    case 'left':  cycleMode(-1); break;
+    case 'right': cycleMode(1); break;
+    case 'two':   toggleMuteGesture(); break;
+    case 'hold':  toggleVoice(); break;
+    default: return;
+  }
+  showToast(GESTURE_HINTS[name]||name);
+  writeLog('sys','Gesture: '+name+' → '+(GESTURE_HINTS[name]||name));
+}
+
+function toggleMuteGesture(){
+  if(typeof toggleMute==='function'){ toggleMute(); return; }
+  muted=!muted;
+  showToast(muted?'Muted':'Unmuted');
+}
+
+function cycleMode(step){
+  const modes=Object.keys(MODE_PROMPTS||{});
+  if(!modes.length) return;
+  let i=modes.indexOf(currentMode);
+  if(i<0) i=0;
+  const next=modes[(i+step+modes.length)%modes.length];
+  if(typeof setMode==='function'){ setMode(next); }
+  else { currentMode=next; }
+  showToast('Mode: '+next.toUpperCase());
+}
+
+function closeAllPanels(){
+  ['modes','history','log','settings','update'].forEach(n=>{
+    try{ closeOverlay(n); }catch(e){}
+  });
+}
+
+window.openLiveCam=openLiveCam;
+window.closeLiveCam=closeLiveCam;
+window.flipLiveCam=flipLiveCam;
+window.setGesturesEnabled=setGesturesEnabled;
+initGestures();
 </script>
+
+<div id="liveCam" role="dialog" aria-label="Live camera">
+  <video id="liveVideo" playsinline autoplay muted></video>
+  <div class="live-bar">
+    <span class="live-dot"></span><span class="live-label">LIVE</span>
+    <span class="live-spacer"></span>
+    <button class="live-btn" onclick="flipLiveCam()" title="Flip camera">&#8635;</button>
+    <button class="live-btn" onclick="closeLiveCam()" title="Close">&#10005;</button>
+  </div>
+  <div class="live-foot">
+    <div id="liveCaption"></div>
+    <div class="live-ask">
+      <input id="liveInput" type="text" placeholder="Ask about what you see&hellip;"
+             onkeydown="if(event.key==='Enter'){const v=this.value.trim();this.value='';if(v)askLive(v);}">
+      <button class="live-mic" onclick="toggleVoice()" title="Ask by voice">&#127908;</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

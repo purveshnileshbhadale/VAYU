@@ -274,6 +274,12 @@ class HudCanvas(QWidget):
         self.speaking = False
         self.state    = "INITIALISING"
 
+        # Live input level, 0..1, pushed in from the mic. When this is being
+        # fed the core answers to the room instead of to a random generator.
+        self._level      = 0.0
+        self._level_seen = 0.0   # monotonic time of the last real reading
+        self._boot_t0    = time.time()
+
         self._tick       = 0
         self._scale      = 1.0
         self._tgt_scale  = 1.0
@@ -335,10 +341,35 @@ class HudCanvas(QWidget):
         except Exception:
             self._face_px = None
 
+    def set_level(self, level: float):
+        """Push a live input level (0..1). Drives the core's reaction."""
+        try:
+            level = max(0.0, min(1.0, float(level)))
+        except (TypeError, ValueError):
+            return
+        # Rise fast, fall slow — matches how a level meter should feel.
+        self._level = level if level > self._level else self._level * 0.82 + level * 0.18
+        self._level_seen = time.time()
+
+    @property
+    def _live_level(self) -> float:
+        """The mic level, or 0 if nobody has fed us one recently."""
+        if time.time() - self._level_seen > 0.4:
+            return 0.0
+        return self._level
+
     def _step(self):
         self._tick += 1
         now = time.time()
-        if now - self._last_t > (0.12 if self.speaking else 0.5):
+
+        live = self._live_level
+        if live > 0.02 and not self.speaking and not self.muted:
+            # Someone is talking: react to them directly, every frame, rather
+            # than drifting toward a random target twice a second.
+            self._tgt_scale = 1.0 + live * 0.16
+            self._tgt_halo  = 60 + live * 150
+            self._last_t = now
+        elif now - self._last_t > (0.12 if self.speaking else 0.5):
             if self.speaking:
                 self._tgt_scale = random.uniform(1.06, 1.14)
                 self._tgt_halo  = random.uniform(145, 190)
@@ -350,11 +381,13 @@ class HudCanvas(QWidget):
                 self._tgt_halo  = random.uniform(48, 68)
             self._last_t = now
 
-        sp = 0.38 if self.speaking else 0.15
+        sp = 0.38 if self.speaking else (0.45 if live > 0.02 else 0.15)
         self._scale += (self._tgt_scale - self._scale) * sp
         self._halo  += (self._tgt_halo  - self._halo)  * sp
 
-        speeds = [1.3, -0.9, 2.0] if self.speaking else [0.55, -0.35, 0.9]
+        boost = 1.0 + live * 1.8
+        speeds = ([1.3, -0.9, 2.0] if self.speaking
+                  else [0.55 * boost, -0.35 * boost, 0.9 * boost])
         for i, spd in enumerate(speeds):
             self._rings[i] = (self._rings[i] + spd) % 360
 
@@ -403,6 +436,17 @@ class HudCanvas(QWidget):
             self._blink_tick = 0
         self.update()
 
+    # Seconds the boot reveal takes before the HUD sits at full strength.
+    BOOT_SEC = 1.8
+
+    def _boot_progress(self) -> float:
+        """0 at launch, 1 once the HUD has finished coming up."""
+        t = (time.time() - self._boot_t0) / self.BOOT_SEC
+        if t >= 1.0:
+            return 1.0
+        # Ease out — quick to appear, unhurried to settle.
+        return 1.0 - (1.0 - t) ** 3
+
     def paintEvent(self, _):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -411,6 +455,13 @@ class HudCanvas(QWidget):
         W, H = self.width(), self.height()
         cx, cy = W / 2, H / 2
         fw = min(W, H)
+        live = self._live_level
+
+        boot = self._boot_progress()
+        if boot < 1.0:
+            # Everything fades up together; the sweep below reads as the thing
+            # doing the powering-on.
+            p.setOpacity(boot)
 
         # starfield
         for sx, sy, sz, sp in self._bg_stars:
@@ -618,6 +669,13 @@ class HudCanvas(QWidget):
         for i in range(N):
             if self.muted:
                 hgt, cl = 2, qcol(C.MUTED_C)
+            elif live > 0.02 and not self.speaking:
+                # Real waveform: loudest in the middle, tapering to the edges,
+                # so it reads as one voice rather than 36 unrelated bars.
+                taper = 1.0 - abs(i - (N - 1) / 2) / ((N - 1) / 2)
+                hgt = int(3 + live * 22 * (0.35 + 0.65 * taper)
+                          * (0.75 + 0.25 * math.sin(self._tick * 0.4 + i)))
+                cl  = qcol(C.GREEN) if hgt > 12 else qcol(C.PRI_DIM)
             elif self.speaking:
                 hgt = random.randint(3, 20)
                 cl  = qcol(C.PRI) if hgt > 12 else qcol(C.PRI_DIM)
@@ -625,6 +683,18 @@ class HudCanvas(QWidget):
                 hgt = int(3 + 2 * math.sin(self._tick * 0.09 + i * 0.6))
                 cl  = qcol(C.BORDER_B)
             p.fillRect(QRectF(wx0 + i * bw, wy + 20 - hgt, bw - 1, hgt), cl)
+
+        # boot sweep — a ring expanding past the edge as the HUD comes up
+        if boot < 1.0:
+            p.setOpacity(1.0)
+            r = fw * 0.12 + boot * fw * 0.75
+            fade = int(220 * (1.0 - boot))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(qcol(C.PRI, fade), 2.0))
+            p.drawEllipse(QRectF(cx - r, cy - r, r * 2, r * 2))
+            p.setPen(QPen(qcol(C.ACC, int(fade * 0.6)), 1.0))
+            p.drawEllipse(QRectF(cx - r * 0.72, cy - r * 0.72, r * 1.44, r * 1.44))
+            # No caption here — the status line below already reads INITIALISING.
 
 class MetricBar(QWidget):
 
@@ -2156,6 +2226,13 @@ class VayuUI:
 
     def set_state(self, state: str):
         self._win._state_sig.emit(state)
+
+    def set_level(self, level: float):
+        """Feed the HUD a live input level (0..1) so the core reacts to sound."""
+        try:
+            self._win.hud.set_level(level)
+        except Exception:
+            pass
 
     def write_log(self, text: str):
         self._win._log_sig.emit(text)

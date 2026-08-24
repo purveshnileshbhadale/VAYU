@@ -1239,6 +1239,11 @@ class VayuLive:
             talking = speech.is_speaking
             floor = _BARGE_IN_LEVEL if talking else _SPEECH_LEVEL
 
+            # Let the HUD answer to the room. 0.25 RMS is a loud voice, so it
+            # maps to a full-scale reaction.
+            if not talking:
+                self.ui.set_level(min(1.0, vol / 0.25))
+
             if vol < floor:
                 loud_run = 0
                 if started:
