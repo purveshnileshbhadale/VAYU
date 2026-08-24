@@ -55,6 +55,13 @@ from actions.power_mgmt        import power_mgmt
 from plugins.loader import load_plugins, plugin_declarations, execute_plugin
 from memory.conversation_db    import init_db, add_entry
 from web.web_control import WebControlServer
+from voice.speech import speech
+
+# Mic thresholds. The barge-in bar sits well above the normal speech floor
+# because the mic hears VAYU's own output too (no echo cancellation).
+_SPEECH_LEVEL = 0.012
+_BARGE_IN_LEVEL = 0.045
+_BARGE_IN_FRAMES = 6  # ~120ms of sustained loud input at 50 frames/sec
 
 
 def get_base_dir():
@@ -1070,43 +1077,66 @@ class VayuLive:
                 self.ui.write_log(f"You: {text}")
                 self.web.add_log("user", text)
                 add_entry("user", text)
-                reply = await self._groq_chat(text)
+                # Whatever is still playing belongs to the previous turn.
+                speech.stop()
+                self.set_speaking(True)
+                reply = await self._groq_chat(text, speak=not self.ui.muted)
                 if reply:
                     print(f"[VAYU] Vayu: {reply}")
                     self.ui.write_log(f"Vayu: {reply}")
                     self.web.add_log("vayu", reply)
                     add_entry("vayu", reply)
-                    play_listening()
-                    self.set_speaking(True)
-                    await asyncio.to_thread(self._groq_tts, reply)
-                    self.set_speaking(False)
                     threading.Thread(target=_update_memory_async,
                                      args=(text, reply), daemon=True).start()
+                # Speech is already under way; wait for it to drain (or be cut
+                # off) before reopening the mic for a fresh phrase.
+                await asyncio.to_thread(speech.wait_until_idle, 120)
+                self.set_speaking(False)
             except Exception as e:
                 print(f"[VAYU] ⚠️ Groq loop: {e}")
                 await asyncio.sleep(1)
 
     def _record_phrase(self, sr=16000, max_sec=15, silence_sec=0.9):
+        """Record one phrase, and cut VAYU off if the user talks over it.
+
+        The mic stays open while VAYU is speaking so the user can interrupt.
+        There is no echo cancellation here, so the mic also hears VAYU itself —
+        hence the higher bar during speech: the input has to be clearly louder
+        and sustained for several frames before it counts as an interruption.
+        """
         import io as _io
         import time
         import wave
         import numpy as np
         frames, started, quiet = [], False, 0
         stopped = False
+        loud_run = 0
         deadline = time.time() + max_sec
 
         def cb(indata, frames_t, time_info, status):
-            nonlocal started, quiet, stopped
+            nonlocal started, quiet, stopped, loud_run
             vol = float(np.sqrt(np.mean(indata.astype(np.float32) ** 2)))
-            if vol < 0.012:
+            talking = speech.is_speaking
+            floor = _BARGE_IN_LEVEL if talking else _SPEECH_LEVEL
+
+            if vol < floor:
+                loud_run = 0
                 if started:
                     quiet += 1
                     if quiet >= int(silence_sec * 50) or time.time() > deadline:
                         stopped = True
                         raise sd.CallbackStop()
-            else:
-                started, quiet = True, 0
-                frames.append(indata.copy())
+                return
+
+            loud_run += 1
+            if talking and not started:
+                # Not convinced yet — could just be VAYU bleeding into the mic.
+                if loud_run < _BARGE_IN_FRAMES:
+                    return
+                speech.stop()
+                self.ui.write_log("SYS: interrupted.")
+            started, quiet = True, 0
+            frames.append(indata.copy())
 
         try:
             with sd.InputStream(samplerate=sr, channels=1, dtype="int16",
@@ -1144,7 +1174,7 @@ class VayuLive:
             return ""
         return r.json().get("text", "")
 
-    async def _groq_chat(self, text: str) -> str:
+    async def _groq_chat(self, text: str, speak: bool = False) -> str:
         key = _get_groq_key()
         if not key:
             return "I need a Groq API key, sir — add it in Settings → Groq."
@@ -1153,25 +1183,24 @@ class VayuLive:
              + "\n\nYou are VAYU on the user's desktop. Use tools when asked. After a tool, confirm in ONE short sentence in character — never just 'Done'."},
             {"role": "user", "content": text},
         ]
+        spoken: list[str] = []
         for _ in range(6):
             body = {"model": "llama-3.3-70b-versatile", "messages": msgs,
                     "temperature": 0.7, "max_tokens": 1024}
             body["tools"] = self._groq_tools()
             try:
-                r = await asyncio.to_thread(
-                    lambda: requests.post(self.GROQ_CHAT_URL,
-                                          headers={"Authorization": "Bearer " + key},
-                                          json=body, timeout=90))
+                content, tool_calls = await asyncio.to_thread(
+                    self._groq_stream_once, key, body, speak)
             except Exception as e:
                 return f"I could not reach Groq, sir: {e}"
-            if r.status_code != 200:
-                return f"Groq error {r.status_code}: {r.text[:120]}"
-            data = r.json()
-            msg = data["choices"][0]["message"]
-            if msg.get("tool_calls"):
-                msgs.append({"role": "assistant", "content": msg.get("content") or None,
-                             "tool_calls": msg["tool_calls"]})
-                for tc in msg["tool_calls"]:
+
+            if content:
+                spoken.append(content)
+
+            if tool_calls:
+                msgs.append({"role": "assistant", "content": content or None,
+                             "tool_calls": tool_calls})
+                for tc in tool_calls:
                     fn = tc["function"]
                     name = fn.get("name", "")
                     try:
@@ -1182,36 +1211,84 @@ class VayuLive:
                     msgs.append({"role": "tool", "tool_call_id": tc.get("id"),
                                  "content": str(result)})
                 continue
-            return (msg.get("content") or "").strip() or "Done, sir."
-        return "I'm having trouble completing that, sir."
+            return " ".join(s.strip() for s in spoken if s.strip()) or "Done, sir."
+        return " ".join(s.strip() for s in spoken if s.strip()) or "I'm having trouble completing that, sir."
+
+    def _groq_stream_once(self, key: str, body: dict, speak: bool) -> tuple[str, list]:
+        """Stream one completion, speaking each sentence as it lands.
+
+        Blocking — call from a worker thread. Returns the full text of the turn
+        plus any tool calls the model asked for. Speaking from inside the
+        stream is the whole point: the first sentence is audible while the
+        model is still writing the rest, including the short preamble the
+        system prompt asks for before a slow tool runs.
+        """
+        payload = {**body, "stream": True}
+        parts: list[str] = []
+        calls: dict[int, dict] = {}
+
+        with requests.post(self.GROQ_CHAT_URL,
+                           headers={"Authorization": "Bearer " + key},
+                           json=payload, timeout=90, stream=True) as r:
+            if r.status_code != 200:
+                raise RuntimeError(f"Groq error {r.status_code}: {r.text[:120]}")
+            for raw in r.iter_lines(decode_unicode=True):
+                if not raw or not raw.startswith("data:"):
+                    continue
+                chunk = raw[5:].strip()
+                if chunk == "[DONE]":
+                    break
+                try:
+                    event = json.loads(chunk)
+                except Exception:
+                    continue
+                choices = event.get("choices") or [{}]
+                delta = choices[0].get("delta") or {}
+
+                text = delta.get("content")
+                if text:
+                    parts.append(text)
+                    if speak:
+                        speech.feed(text)
+
+                for tc in delta.get("tool_calls") or []:
+                    slot = calls.setdefault(
+                        tc.get("index", 0),
+                        {"id": None, "type": "function",
+                         "function": {"name": "", "arguments": ""}})
+                    if tc.get("id"):
+                        slot["id"] = tc["id"]
+                    fn = tc.get("function") or {}
+                    if fn.get("name"):
+                        slot["function"]["name"] += fn["name"]
+                    if fn.get("arguments"):
+                        slot["function"]["arguments"] += fn["arguments"]
+
+        if speak:
+            # A tool preamble is a complete thought even without a full stop.
+            speech.end_stream()
+        return "".join(parts), [calls[i] for i in sorted(calls)]
 
     async def _groq_chat_and_speak(self, text: str):
         try:
             self.ui.write_log(f"You: {text}")
             self.web.add_log("user", text)
             add_entry("user", text)
-            reply = await self._groq_chat(text)
+            speech.stop()
+            self.set_speaking(True)
+            reply = await self._groq_chat(text, speak=not self.ui.muted)
             self.ui.write_log(f"Vayu: {reply}")
             self.web.add_log("vayu", reply)
             add_entry("vayu", reply)
-            if reply and not self.ui.muted:
-                self.set_speaking(True)
-                await asyncio.to_thread(self._groq_tts, reply)
-                self.set_speaking(False)
+            await asyncio.to_thread(speech.wait_until_idle, 120)
+            self.set_speaking(False)
         except Exception as e:
             print(f"[VAYU] ⚠️ text cmd: {e}")
 
     def _groq_tts(self, text: str):
-        t = text.replace("'", "''")
-        ps = ("Add-Type -AssemblyName System.Speech; "
-              "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
-              "$s.Rate = 0; $s.Speak('" + t + "')")
-        try:
-            import subprocess
-            subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                           timeout=180, capture_output=True)
-        except Exception as e:
-            print(f"[VAYU] 🔊 TTS: {e}")
+        """Speak a whole string. Kept for callers outside the streaming path."""
+        speech.say(text)
+        speech.wait_until_idle(120)
 
     def _on_text_command(self, text: str):
         if not self._loop:
